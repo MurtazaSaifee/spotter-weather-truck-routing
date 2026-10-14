@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { ApiError } from './api/client';
-import { type PlanRequest, usePlanTrip } from './api/plan';
+import { type Plan, type PlanRequest, type SamplingInterval, usePlanTrip } from './api/plan';
 import type { Place } from './api/places';
 import { AppShell } from './layout/AppShell';
 import { MapView } from './map/MapView';
@@ -10,17 +10,32 @@ export default function App() {
   // The trip's two ends live here because the panel edits them and the map draws them.
   const [origin, setOrigin] = useState<Place | null>(null);
   const [destination, setDestination] = useState<Place | null>(null);
-  // The plan and the selected route are shared the same way: cards and map select together.
+  // The plan on screen, the request it answers and the selected route are shared the same
+  // way: cards and map select together. The plan is kept here, not read from the mutation,
+  // so it stays on screen while the same trip is planned again with another interval.
   const planTrip = usePlanTrip();
+  const [submitted, setSubmitted] = useState<PlanRequest | null>(null);
+  const [plan, setPlan] = useState<Plan | null>(null);
   const [selectedRouteId, setSelectedRouteId] = useState<string | null>(null);
 
-  const plan = planTrip.data ?? null;
   const planError = planTrip.error instanceof ApiError ? planTrip.error : null;
 
   function handlePlan(request: PlanRequest) {
+    setSubmitted(request);
+    setPlan(null);
     planTrip.mutate(request, {
-      onSuccess: (planned) => setSelectedRouteId(planned.routes[0]?.id ?? null),
+      onSuccess: (planned) => {
+        setPlan(planned);
+        setSelectedRouteId(planned.routes[0]?.id ?? null);
+      },
     });
+  }
+
+  // The same trip with the driver's interval. The server answers from its route cache, and
+  // route ids are stable, so the selection stays where it is.
+  function handleIntervalChange(interval: SamplingInterval) {
+    if (!submitted) return;
+    planTrip.mutate({ ...submitted, interval_miles: interval }, { onSuccess: setPlan });
   }
 
   return (
@@ -37,6 +52,7 @@ export default function App() {
           plan={plan}
           selectedRouteId={selectedRouteId}
           onSelectRoute={setSelectedRouteId}
+          onIntervalChange={handleIntervalChange}
         />
       }
       map={
@@ -44,6 +60,7 @@ export default function App() {
           origin={origin}
           destination={destination}
           routes={plan?.routes ?? []}
+          timeZone={plan?.origin_time_zone ?? null}
           selectedRouteId={selectedRouteId}
           onSelectRoute={setSelectedRouteId}
         />

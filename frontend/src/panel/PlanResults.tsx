@@ -1,6 +1,7 @@
 import { Alert, CircularProgress, Stack, Typography } from '@mui/material';
 import type { ApiError } from '../api/client';
-import type { Plan } from '../api/plan';
+import type { Plan, SamplingInterval } from '../api/plan';
+import { IntervalToggle } from './IntervalToggle';
 import { PlanNotices } from './PlanNotices';
 import { RouteCard } from './RouteCard';
 
@@ -10,17 +11,22 @@ interface PlanResultsProps {
   plan: Plan | null;
   selectedRouteId: string | null;
   onSelectRoute: (id: string) => void;
+  onIntervalChange: (interval: SamplingInterval) => void;
 }
 
-/** The outcome of pressing Plan: a progress message, the API's error, or the route cards. */
+/**
+ * The outcome of pressing Plan: a progress message, the API's error, or the route cards.
+ * Planning again with another interval keeps the plan on screen until the new one arrives.
+ */
 export function PlanResults({
   isPlanning,
   error,
   plan,
   selectedRouteId,
   onSelectRoute,
+  onIntervalChange,
 }: PlanResultsProps) {
-  if (isPlanning) {
+  if (isPlanning && !plan) {
     return (
       <Stack
         role="status"
@@ -35,12 +41,19 @@ export function PlanResults({
       </Stack>
     );
   }
-  if (error) return <Alert severity="error">{error.message}</Alert>;
-  if (!plan) return null;
+  const alert = error && <Alert severity="error">{error.message}</Alert>;
+  if (!plan) return alert || null;
 
   return (
     <Stack spacing={2}>
+      {alert}
       <PlanNotices notices={plan.notices} />
+      <IntervalToggle
+        interval={plan.interval_miles}
+        automatic={plan.interval_automatic}
+        disabled={isPlanning}
+        onChange={onIntervalChange}
+      />
       <Stack component="section" aria-labelledby="routes-heading" spacing={1.5}>
         <Typography id="routes-heading" component="h2" variant="subtitle1">
           Routes
