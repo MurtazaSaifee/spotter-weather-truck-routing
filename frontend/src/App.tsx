@@ -110,6 +110,7 @@ export default function App() {
                     timeZone={plan.origin_time_zone}
                     layer={heatmapLayer}
                     onLayerChange={setHeatmapLayer}
+                    route={plan.routes.find(({ id }) => id === selectedRouteId) ?? null}
                     onRetry={() => void heatmap.refetch()}
                   />
                 ) : null
