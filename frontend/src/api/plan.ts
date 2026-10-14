@@ -31,6 +31,29 @@ export interface CheckpointWeather {
   snow_in_hr: number;
 }
 
+/** A risk level's code. `no_data` is a checkpoint without a forecast: never Low. */
+export type RiskLevel = 'low' | 'moderate' | 'high' | 'severe' | 'no_travel';
+export type CheckpointRiskLevel = RiskLevel | 'no_data';
+export type ConditionName = 'wind' | 'rain' | 'snow';
+
+/** How risky a checkpoint's forecast is for the load. */
+export interface CheckpointRisk {
+  /** The worst of wind (after the load rules), rain and snow. */
+  level: CheckpointRiskLevel;
+  /** Level 0 to 4, plus 0.5 when conditions combine; null for No data. */
+  score: number | null;
+  /** Each condition's own level; null for one the forecast lacks. */
+  conditions: Record<ConditionName, RiskLevel | null>;
+  /** The condition(s) at the overall level; empty for Low and No data. */
+  driving: ConditionName[];
+  /** When two or more conditions are Moderate or worse, which; otherwise empty. */
+  combined: ConditionName[];
+  /** Gusts alone would be High or worse, above the sustained wind. Informational. */
+  gust_warning: { gust_mph: number; level: RiskLevel } | null;
+  /** The load rules put the wind in a higher band than the wind table. */
+  wind_raised_by_load: boolean;
+}
+
 /** A sampled point on a route. */
 export interface Checkpoint {
   /** Miles from the origin along the route. */
@@ -43,6 +66,7 @@ export interface Checkpoint {
   covered_miles: number;
   /** The forecast for the hour the truck is here; null means No data. */
   weather: CheckpointWeather | null;
+  risk: CheckpointRisk;
 }
 
 export interface PlannedRoute {
