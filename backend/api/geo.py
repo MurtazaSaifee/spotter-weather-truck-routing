@@ -1,4 +1,4 @@
-"""Pure geometry helpers: polyline encoding, great-circle distance and line simplification.
+"""Pure geometry helpers: polylines, distances, sampling, simplification and a route index.
 
 Points are ``(lat, lng)`` tuples in degrees. Nothing here does I/O or touches Django.
 """

@@ -52,11 +52,22 @@ def plan_trip(trip: TripRequest) -> Plan:
     time_zone = ZoneInfo(places.time_zone_at(*trip.origin))
     routes = routing.find_routes(trip)
     notices: list[Notice] = []
+    if len(routes) < routing.MAX_ROUTES:
+        notices.append(_fewer_routes_notice(len(routes)))
     return Plan(
         origin_time_zone=str(time_zone),
         departure=trip.departure_minute.astimezone(time_zone),
         routes=[_plan_route(route, trip, time_zone) for route in routes],
         notices=notices,
+    )
+
+
+def _fewer_routes_notice(count: int) -> Notice:
+    noun = "route" if count == 1 else "routes"
+    verb = "exists" if count == 1 else "exist"
+    return Notice(
+        code="fewer_than_three_routes",
+        message=f"Only {count} distinct {noun} {verb} between these places, not three.",
     )
 
 
