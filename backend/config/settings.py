@@ -81,6 +81,18 @@ REST_FRAMEWORK = {
     "EXCEPTION_HANDLER": "api.errors.exception_handler",
 }
 
+# Swagger UI is loaded from a CDN; drf-spectacular defaults to the unpinned "@latest".
+SWAGGER_UI_DIST = "https://cdn.jsdelivr.net/npm/swagger-ui-dist@5.33.2"
+
+SPECTACULAR_SETTINGS = {
+    "TITLE": "Weather-Aware Truck Routing API",
+    "DESCRIPTION": "Plans a truck route and reports the weather expected along it.",
+    "VERSION": "1.0.0",
+    "SERVE_INCLUDE_SCHEMA": False,
+    "SWAGGER_UI_DIST": SWAGGER_UI_DIST,
+    "SWAGGER_UI_FAVICON_HREF": f"{SWAGGER_UI_DIST}/favicon-32x32.png",
+}
+
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
