@@ -1,13 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { RISK_LEVELS } from '../risk/palette';
 import { chicagoToDallas } from '../test/fixtures/plan';
-import { rgb } from './routeLayers';
+import { TOUCH_TARGET } from '../theme';
+import { rgb } from './colour';
 import {
   checkpointDots,
   createCheckpointLayers,
   dotRadiusPx,
   nearestDot,
-  TOUCH_TARGET_PX,
   OTHER_DOT,
   SELECTED_DOT,
 } from './checkpointLayers';
@@ -79,11 +79,11 @@ describe('tapping near a dot', () => {
   const [x, y] = project(first.position);
 
   it('finds the dot within reach of a finger', () => {
-    expect(nearestDot(dots, [x + 15, y - 10], project, TOUCH_TARGET_PX / 2)).toBe(first);
+    expect(nearestDot(dots, [x + 15, y - 10], project, TOUCH_TARGET / 2)).toBe(first);
   });
 
   it('finds nothing beyond the reach', () => {
-    expect(nearestDot(dots, [x + 40, y], project, TOUCH_TARGET_PX / 2)).toBeNull();
+    expect(nearestDot(dots, [x + 40, y], project, TOUCH_TARGET / 2)).toBeNull();
   });
 
   it('picks the nearer of two dots in reach', () => {
@@ -96,6 +96,6 @@ describe('tapping near a dot', () => {
   });
 
   it('makes a touch target at least 44 pixels across', () => {
-    expect(TOUCH_TARGET_PX).toBeGreaterThanOrEqual(44);
+    expect(TOUCH_TARGET).toBeGreaterThanOrEqual(44);
   });
 });

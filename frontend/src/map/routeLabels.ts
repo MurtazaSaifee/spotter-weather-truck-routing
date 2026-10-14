@@ -1,9 +1,10 @@
 import type { PickingInfo } from '@deck.gl/core';
 import { TextLayer } from '@deck.gl/layers';
 import type { PlannedRoute } from '../api/plan';
+import { theme } from '../theme';
 import { formatAverageRisk, formatDuration, formatMilesExact } from '../trip/format';
 import type { LngLat } from './polyline';
-import { rgb } from './routeLayers';
+import { rgb } from './colour';
 
 /** A route's label on the map: where it sits and what it says. */
 export interface RouteLabel {
@@ -264,12 +265,14 @@ function sample(path: LngLat[], screen: Point[], project: LabelView['project']):
   return samples;
 }
 
-const TEXT_COLOR = rgb('#1c2433');
+const { palette } = theme;
+const TEXT_COLOR = rgb(palette.text.primary);
+// The same colours as the route lines (see TripMap); a blocked route's is the error red.
 const BORDER_COLORS: Record<LabelTone, [number, number, number]> = {
-  selected: rgb('#1a4590'),
-  recommended: rgb('#112f68'),
-  blocked: rgb('#b3261e'),
-  plain: rgb('#6b7385'),
+  selected: rgb(palette.primary.main),
+  recommended: rgb(palette.primary.dark),
+  blocked: rgb(palette.error.main),
+  plain: rgb(palette.grey[500]),
 };
 const BORDER_WIDTHS: Record<LabelTone, number> = { selected: 2, recommended: 1.5, blocked: 1.5, plain: 1 };
 

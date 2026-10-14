@@ -3,7 +3,7 @@ import { ScatterplotLayer } from '@deck.gl/layers';
 import type { Checkpoint, PlannedRoute } from '../api/plan';
 import type { LngLat } from './polyline';
 import { riskStyle } from '../risk/palette';
-import { rgb } from './routeLayers';
+import { rgb } from './colour';
 
 /** One checkpoint, ready to draw and to describe when the driver points at it. */
 export interface CheckpointDot {
@@ -99,9 +99,6 @@ export function createCheckpointLayers({ dots, selectedRouteId }: CheckpointLaye
     ),
   ];
 }
-
-/** The smallest thing a fingertip can be asked to hit, in pixels across. */
-export const TOUCH_TARGET_PX = 44;
 
 /**
  * The dot nearest `point` (pixels in the map's container) and within `reach` pixels of it, or

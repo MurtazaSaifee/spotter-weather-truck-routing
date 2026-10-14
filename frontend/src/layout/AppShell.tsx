@@ -163,7 +163,10 @@ export function AppShell({
           },
           display: 'flex',
           flexDirection: 'column',
-          transform: { xs: 'translateY(var(--sheet-y, calc(100% - 72px)))', md: 'none' },
+          transform: {
+            xs: `translateY(var(--sheet-y, calc(100% - ${SHEET_HEADER_HEIGHT}px)))`,
+            md: 'none',
+          },
           transition: 'transform 320ms cubic-bezier(0.22, 0.9, 0.3, 1)',
           '&[data-dragging="true"]': { transition: 'none' },
           willChange: { xs: 'transform', md: 'auto' },

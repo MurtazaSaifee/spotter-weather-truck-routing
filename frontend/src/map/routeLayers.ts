@@ -1,6 +1,7 @@
 import type { PickingInfo } from '@deck.gl/core';
 import { PathStyleExtension, type PathStyleExtensionProps } from '@deck.gl/extensions';
 import { PathLayer } from '@deck.gl/layers';
+import { rgb } from './colour';
 import type { LngLat } from './polyline';
 
 /** A route's geometry, ready to draw. */
@@ -47,11 +48,6 @@ export const ROUTE_LAYER_IDS: ReadonlySet<string> = new Set([
 ]);
 
 const CASING_COLOR: [number, number, number] = [255, 255, 255];
-
-export function rgb(hex: string): [number, number, number] {
-  const value = parseInt(hex.slice(1), 16);
-  return [(value >> 16) & 255, (value >> 8) & 255, value & 255];
-}
 
 /**
  * The routes as deck.gl layers, drawn in this order so that what matters is on top: the other

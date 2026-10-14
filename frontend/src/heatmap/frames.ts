@@ -1,4 +1,5 @@
 import { MISSING, type FrameList, type Heatmap, type HeatmapGrid } from './payload';
+import { rgb } from '../map/colour';
 import { RISK_LEVELS } from '../risk/palette';
 import type { HeatmapLayer } from './layer';
 import { colourTable, stepFor, WEATHER_SCALES, type WeatherLayer } from './scales';
@@ -89,10 +90,7 @@ export interface Frames extends Raster {
 }
 
 /** The palette's colour of risk levels 0 (Low) to 4 (No Travel), as `[r, g, b]`. */
-const LEVEL_COLOURS: [number, number, number][] = RISK_LEVELS.slice(0, 5).map(({ color }) => {
-  const value = parseInt(color.slice(1), 16);
-  return [(value >> 16) & 255, (value >> 8) & 255, value & 255];
-});
+const LEVEL_COLOURS = RISK_LEVELS.slice(0, 5).map(({ color }) => rgb(color));
 
 const TOP_LEVEL = LEVEL_COLOURS.length - 1;
 

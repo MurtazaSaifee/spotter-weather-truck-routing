@@ -1,6 +1,7 @@
 import { GlobalStyles, useTheme } from '@mui/material';
 import { useEffect } from 'react';
 import { useMap } from 'react-map-gl/maplibre';
+import { TOUCH_TARGET } from '../theme';
 
 /**
  * Restyles the parts of MapLibre we cannot reach through props: the attribution gets a solid
@@ -48,20 +49,20 @@ export function MapStyles() {
         '@media (pointer: coarse)': {
           '.maplibregl-ctrl.maplibregl-ctrl-attrib.maplibregl-compact:not(.maplibregl-compact-show)': {
             boxSizing: 'border-box',
-            width: 44,
-            height: 44,
+            width: TOUCH_TARGET,
+            height: TOUCH_TARGET,
             padding: 0,
           },
-          '.maplibregl-ctrl.maplibregl-ctrl-attrib.maplibregl-compact-show': { padding: '4px 48px 4px 10px', minHeight: 44 },
+          '.maplibregl-ctrl.maplibregl-ctrl-attrib.maplibregl-compact-show': { padding: '4px 48px 4px 10px', minHeight: TOUCH_TARGET },
           '.maplibregl-ctrl-attrib.maplibregl-compact .maplibregl-ctrl-attrib-button': {
-            width: 44,
-            height: 44,
+            width: TOUCH_TARGET,
+            height: TOUCH_TARGET,
             // The icon is drawn for a 24 px button: keep it one icon, centred in the bigger one.
             backgroundRepeat: 'no-repeat',
             backgroundPosition: 'center',
           },
-          '.maplibregl-ctrl-group button': { width: 44, height: 44 },
-          '.maplibregl-popup-close-button': { width: 44, height: 44, fontSize: 24 },
+          '.maplibregl-ctrl-group button': { width: TOUCH_TARGET, height: TOUCH_TARGET },
+          '.maplibregl-popup-close-button': { width: TOUCH_TARGET, height: TOUCH_TARGET, fontSize: 24 },
         },
         // The popup's content sets its own padding and size, which the placement relies on.
         '.maplibregl-popup-content': {

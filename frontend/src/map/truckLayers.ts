@@ -1,7 +1,7 @@
 import { ScatterplotLayer } from '@deck.gl/layers';
 import { TRUCK_COLOR } from '../truck/truckColors';
 import type { LngLat } from './polyline';
-import { rgb } from './routeLayers';
+import { rgb } from './colour';
 
 const DISC_RADIUS_PX = 8;
 const RING_PX = 3;
