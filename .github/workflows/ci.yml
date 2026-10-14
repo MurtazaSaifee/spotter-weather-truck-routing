@@ -32,6 +32,8 @@ jobs:
       - run: uv run ruff check .
       - run: uv run ruff format --check .
       - run: uv run pytest
+      # The OpenAPI document must build without warnings and be valid.
+      - run: uv run python manage.py spectacular --validate --fail-on-warn --file /dev/null
 
   frontend:
     name: Frontend
