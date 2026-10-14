@@ -26,6 +26,7 @@ import ipaddress
 import logging
 import math
 import time
+from typing import Any
 
 from django.conf import settings
 from django.core.cache import cache
@@ -122,14 +123,23 @@ class SuggestionRateLimit(RateLimit):
     scope = "suggest"
 
 
+def _redis_client(redis_key: str) -> Any | None:
+    """The Redis client behind Django's Redis cache for ``redis_key``, or ``None`` for any other
+    cache. Django offers no public way to a pipeline, which the counter needs to be one round
+    trip, so this is the one place that reaches into the cache backend's private ``_cache``."""
+    backend = getattr(cache, "_cache", None)
+    if hasattr(backend, "get_client"):
+        return backend.get_client(redis_key, write=True)
+    return None
+
+
 def _increment(key: str, seconds: int) -> int:
     """Add one to the counter at ``key``, creating it if it is missing and making it expire
     ``seconds`` after the latest request. Returns the new count."""
-    redis_backend = getattr(cache, "_cache", None)
-    if hasattr(redis_backend, "get_client"):
+    redis_key = cache.make_and_validate_key(key)
+    if client := _redis_client(redis_key):
         # Django's Redis cache. One MULTI/EXEC round trip, and the counter is a plain integer.
-        redis_key = cache.make_and_validate_key(key)
-        pipeline = redis_backend.get_client(redis_key, write=True).pipeline()
+        pipeline = client.pipeline()
         pipeline.incr(redis_key)
         pipeline.expire(redis_key, seconds)
         count, _ = pipeline.execute()
