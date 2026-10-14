@@ -1,0 +1,22 @@
+import react from '@vitejs/plugin-react';
+import { defineConfig } from 'vitest/config';
+
+// The browser only ever talks to one origin: in dev (and `vite preview`) Vite
+// forwards /api to Django, so no CORS configuration is needed anywhere.
+export default defineConfig({
+  plugins: [react()],
+  server: {
+    proxy: {
+      '/api': { target: 'http://127.0.0.1:8000', changeOrigin: true },
+    },
+  },
+  test: {
+    environment: 'jsdom',
+    setupFiles: ['./src/test/setup.ts'],
+    css: false,
+    // Node 25 prints a `--localstorage-file` warning when the jsdom environment
+    // touches the global localStorage. jsdom supplies its own, so switch Node's
+    // Web Storage off (the flag exists on Node 22+, so it is safe on CI's Node 24).
+    execArgv: ['--no-experimental-webstorage'],
+  },
+});
