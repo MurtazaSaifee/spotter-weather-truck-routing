@@ -13,10 +13,7 @@ const API_ERROR_MESSAGE = 'Something went wrong on our side. Please try again.';
 function failHealthCheck() {
   server.use(
     http.get('/api/health', () =>
-      HttpResponse.json(
-        { code: 'internal_error', message: API_ERROR_MESSAGE },
-        { status: 503 },
-      ),
+      HttpResponse.json({ code: 'internal_error', message: API_ERROR_MESSAGE }, { status: 503 }),
     ),
   );
 }

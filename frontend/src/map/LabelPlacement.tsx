@@ -75,7 +75,14 @@ export function LabelPlacement({
         routes.flatMap((route) => {
           const path = paths.find(({ id }) => id === route.id)?.path;
           return path
-            ? [{ id: route.id, path, size: labelSize(texts.get(route.id)!), priority: styleOf(route).labelPriority }]
+            ? [
+                {
+                  id: route.id,
+                  path,
+                  size: labelSize(texts.get(route.id)!),
+                  priority: styleOf(route).labelPriority,
+                },
+              ]
             : [];
         }),
         {

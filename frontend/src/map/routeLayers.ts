@@ -145,9 +145,7 @@ export function createRouteLayers({
   otherColor,
 }: RouteLayerOptions) {
   const styleOf = ({ id }: RoutePath) =>
-    ROLE_STYLES[
-      routeRole(id, blockedRouteIds.has(id), { selectedRouteId, recommendedRouteId })
-    ];
+    ROLE_STYLES[routeRole(id, blockedRouteIds.has(id), { selectedRouteId, recommendedRouteId })];
   const widthOf = (route: RoutePath) => styleOf(route).width;
   const colors: Record<ColourKey, string> = {
     selected: selectedColor,

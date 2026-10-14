@@ -108,7 +108,13 @@ function RiskMiles({
     <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, whiteSpace: 'nowrap' }}>
       <Box
         aria-hidden="true"
-        sx={{ flex: 'none', width: 10, height: 10, borderRadius: '50%', bgcolor: riskStyle(level).color }}
+        sx={{
+          flex: 'none',
+          width: 10,
+          height: 10,
+          borderRadius: '50%',
+          bgcolor: riskStyle(level).color,
+        }}
       />
       <Typography component="span" variant="body2">
         {`${label} ${formatMilesExact(miles)} mi`}

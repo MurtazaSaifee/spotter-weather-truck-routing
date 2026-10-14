@@ -100,14 +100,20 @@ describe('route layers', () => {
   it('draw every route exactly once', () => {
     const all = layers({ blockedRouteIds: new Set(['route-1']) });
 
-    const ids = all.filter((layer) => !isCasing(layer)).flatMap((layer) => (layer.props.data as RoutePath[]).map((r) => r.id));
+    const ids = all
+      .filter((layer) => !isCasing(layer))
+      .flatMap((layer) => (layer.props.data as RoutePath[]).map((r) => r.id));
     expect(ids.sort()).toEqual(['route-1', 'route-2', 'route-3']);
   });
 
   it('draw nothing special when no route is recommended', () => {
     const all = layers({ recommendedRouteId: null, selectedRouteId: null });
 
-    expect(paths.map((p) => drawn(all, p.id).width)).toEqual([OTHER_WIDTH_PX, OTHER_WIDTH_PX, OTHER_WIDTH_PX]);
+    expect(paths.map((p) => drawn(all, p.id).width)).toEqual([
+      OTHER_WIDTH_PX,
+      OTHER_WIDTH_PX,
+      OTHER_WIDTH_PX,
+    ]);
   });
 
   it('sets the selected route apart with a white casing under it, above the other routes', () => {
@@ -118,7 +124,9 @@ describe('route layers', () => {
     const casingWidth = (casing.props.getWidth as unknown as (r: RoutePath) => number)(route);
     expect(route.id).toBe('route-3');
     expect(casingWidth).toBe(SELECTED_WIDTH_PX + CASING_EXTRA_PX);
-    expect(Array.from((casing.props.getColor as unknown as number[]).slice(0, 3))).toEqual([255, 255, 255]);
+    expect(Array.from((casing.props.getColor as unknown as number[]).slice(0, 3))).toEqual([
+      255, 255, 255,
+    ]);
     expect(all.indexOf(casing)).toBeLessThan(drawn(all, 'route-3').position);
     expect(all.indexOf(casing)).toBeGreaterThan(drawn(all, 'route-2').position);
     // A dashed route gets a dashed casing, so it still reads as dashed.
@@ -135,7 +143,11 @@ describe('route layers', () => {
   it('has no casing when nothing is selected', () => {
     const all = layers({ selectedRouteId: null });
 
-    expect(all.filter((layer) => isCasing(layer)).every((layer) => (layer.props.data as unknown[]).length === 0)).toBe(true);
+    expect(
+      all
+        .filter((layer) => isCasing(layer))
+        .every((layer) => (layer.props.data as unknown[]).length === 0),
+    ).toBe(true);
     expect(drawn(all, 'route-1').alpha).toBe(255);
   });
 });

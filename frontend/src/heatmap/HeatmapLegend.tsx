@@ -24,7 +24,11 @@ export function HeatmapLegend({ layer }: { layer: HeatmapLayer }) {
 /** The five levels the heatmap draws; No data is left transparent on the map. */
 function RiskBands() {
   return (
-    <Stack direction="row" useFlexGap sx={{ alignItems: 'center', flexWrap: 'wrap', columnGap: 1, rowGap: 0.25 }}>
+    <Stack
+      direction="row"
+      useFlexGap
+      sx={{ alignItems: 'center', flexWrap: 'wrap', columnGap: 1, rowGap: 0.25 }}
+    >
       {RISK_LEVELS.slice(0, 5).map(({ code, label, color }) => (
         <Stack key={code} direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
           <Box
@@ -50,7 +54,11 @@ function ScaleBar({ layer }: { layer: Exclude<HeatmapLayer, 'risk'> }) {
   const [low, , high] = labels;
   return (
     <Stack direction="row" spacing={1} sx={{ alignItems: 'center', minWidth: 0 }}>
-      <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, whiteSpace: 'nowrap' }}>
+      <Typography
+        variant="caption"
+        color="text.secondary"
+        sx={{ fontWeight: 600, whiteSpace: 'nowrap' }}
+      >
         {`${title} (${unit})`}
       </Typography>
       <Typography variant="caption" color="text.secondary">

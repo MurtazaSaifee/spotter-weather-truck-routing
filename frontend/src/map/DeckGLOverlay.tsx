@@ -30,7 +30,12 @@ function stack(
  * heatmap's layers come in through `underlay`, the route labels through `labelLayers` and the
  * truck's through `topLayers`, and they are merged here with the layers React owns.
  */
-export function DeckGLOverlay({ underlay, labelLayers: labels, topLayers, ...props }: DeckGLOverlayProps) {
+export function DeckGLOverlay({
+  underlay,
+  labelLayers: labels,
+  topLayers,
+  ...props
+}: DeckGLOverlayProps) {
   const { current: mapRef } = useMap();
   const [overlay] = useState(() => new MapboxOverlay({ ...props, interleaved: true }));
 

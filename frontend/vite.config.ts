@@ -20,9 +20,7 @@ export default defineConfig({
         // The map is one lazy chunk of nearly 2 MB. Split into the two libraries it is made of
         // so the browser fetches them side by side, and each is cached on its own across deploys.
         codeSplitting: {
-          groups: [
-            { name: 'maplibre', test: /node_modules[\\/]maplibre-gl[\\/]/, priority: 20 },
-          ],
+          groups: [{ name: 'maplibre', test: /node_modules[\\/]maplibre-gl[\\/]/, priority: 20 }],
         },
       },
     },

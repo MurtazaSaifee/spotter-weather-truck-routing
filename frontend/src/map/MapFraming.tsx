@@ -45,7 +45,11 @@ export function MapFraming({ origin, destination, routes, insets }: MapFramingPr
     const { clientWidth, clientHeight } = map.getContainer();
     const padding = fitPadding(clientWidth, clientHeight, latestInsets.current);
     // Before the first layout the map has no size to fit into; the resize that follows fits it.
-    if (clientWidth - padding.left - padding.right < 1 || clientHeight - padding.top - padding.bottom < 1) return;
+    if (
+      clientWidth - padding.left - padding.right < 1 ||
+      clientHeight - padding.top - padding.bottom < 1
+    )
+      return;
     map.fitBounds(target.current.bounds, {
       padding,
       maxZoom: target.current.maxZoom,

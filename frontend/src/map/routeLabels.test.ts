@@ -66,7 +66,12 @@ const screen = ([lng, lat]: LngLat) => [lng * 10, 150 - lat * 10];
 
 function rectOf(position: LngLat, size = SIZE) {
   const [x, y] = screen(position);
-  return { left: x - size[0] / 2, right: x + size[0] / 2, top: y - size[1] / 2, bottom: y + size[1] / 2 };
+  return {
+    left: x - size[0] / 2,
+    right: x + size[0] / 2,
+    top: y - size[1] / 2,
+    bottom: y + size[1] / 2,
+  };
 }
 function overlap(a: LngLat, b: LngLat) {
   const [r, s] = [rectOf(a), rectOf(b)];
@@ -118,7 +123,8 @@ describe('placing labels', () => {
     const ids = Object.keys(placed);
     expect(ids).toContain('a');
     for (const first of ids)
-      for (const second of ids) if (first < second) expect(overlap(placed[first], placed[second])).toBe(false);
+      for (const second of ids)
+        if (first < second) expect(overlap(placed[first], placed[second])).toBe(false);
   });
 
   it('keeps every label wholly inside the map, clear of the padding the layout asks for', () => {
@@ -127,7 +133,10 @@ describe('placing labels', () => {
       [-20, 15],
       [60, -15],
     ];
-    const placed = placeLabels([{ id: 'a', path: long, size: SIZE, priority: 0 }], view({ padding: { bottom: 100 } }));
+    const placed = placeLabels(
+      [{ id: 'a', path: long, size: SIZE, priority: 0 }],
+      view({ padding: { bottom: 100 } }),
+    );
 
     const { left, right, top, bottom } = rectOf(placed.a);
     expect(left).toBeGreaterThanOrEqual(0);
@@ -151,7 +160,10 @@ describe('placing labels', () => {
         const [x, y] = screen([lng, lat]);
         const pin = { left: x - 14, right: x + 14, top: y - 42, bottom: y };
         const covers =
-          label.left < pin.right && pin.left < label.right && label.top < pin.bottom && pin.top < label.bottom;
+          label.left < pin.right &&
+          pin.left < label.right &&
+          label.top < pin.bottom &&
+          pin.top < label.bottom;
         expect(covers).toBe(false);
       }
     }

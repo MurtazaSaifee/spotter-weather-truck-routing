@@ -101,7 +101,9 @@ function explain(deciding: Deciding, winner: string, other: string): string {
       return `Fewer High miles: ${winner} has ${formatMilesExact(won ?? 0)} mi, ${other} has ${formatMilesExact(lost ?? 0)} mi.`;
     case 'average_risk': {
       const otherRisk =
-        lost === null ? `${other} has no forecast data to average` : `${other} is ${formatAverageRisk(lost)}`;
+        lost === null
+          ? `${other} has no forecast data to average`
+          : `${other} is ${formatAverageRisk(lost)}`;
       const lowest = formatAverageRisk(deciding.best_average_risk);
       return (
         `Lower average risk: ${winner} is ${formatAverageRisk(won)}, ${otherRisk}. ` +

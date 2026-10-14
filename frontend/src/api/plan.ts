@@ -84,11 +84,7 @@ export interface RiskMiles {
 
 /** What separated the recommended route from another one. */
 export type DecidingCriterion =
-  | 'blocked'
-  | 'severe_miles'
-  | 'high_miles'
-  | 'average_risk'
-  | 'travel_time';
+  'blocked' | 'severe_miles' | 'high_miles' | 'average_risk' | 'travel_time';
 
 /** Why the recommended route beat one alternative, with both values. */
 export interface Deciding {

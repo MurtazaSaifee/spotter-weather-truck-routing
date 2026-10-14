@@ -33,7 +33,10 @@ export function CheckpointDetails({
   maxHeight,
 }: CheckpointDetailsProps) {
   return (
-    <Box role="tooltip" sx={{ width, maxHeight, overflowY: 'auto', boxSizing: 'border-box', p: 1.25 }}>
+    <Box
+      role="tooltip"
+      sx={{ width, maxHeight, overflowY: 'auto', boxSizing: 'border-box', p: 1.25 }}
+    >
       <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
         {routeLabel}
       </Typography>
@@ -85,13 +88,7 @@ function Risk({ risk }: { risk: CheckpointRisk }) {
 }
 
 /** The forecast at the ETA, or No data: a checkpoint without one is never shown as fine. */
-function Forecast({
-  weather,
-  risk,
-}: {
-  weather: CheckpointWeather | null;
-  risk: CheckpointRisk;
-}) {
+function Forecast({ weather, risk }: { weather: CheckpointWeather | null; risk: CheckpointRisk }) {
   if (!weather) return null;
   return (
     <Box sx={{ mt: 0.5 }}>

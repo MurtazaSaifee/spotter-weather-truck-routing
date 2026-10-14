@@ -59,7 +59,10 @@ describe('the heatmap bitmaps', () => {
 
   it.each([
     ['an error event', (worker: StubWorker) => worker.dispatchEvent(new Event('error'))],
-    ['a message it cannot read', (worker: StubWorker) => worker.dispatchEvent(new Event('messageerror'))],
+    [
+      'a message it cannot read',
+      (worker: StubWorker) => worker.dispatchEvent(new Event('messageerror')),
+    ],
     ['a failure message', (worker: StubWorker) => worker.say({ layer: 'risk', failed: true })],
   ])('tells the page when the worker fails with %s', (_name, fail) => {
     renderBitmaps();

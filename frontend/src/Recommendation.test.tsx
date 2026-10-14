@@ -204,7 +204,9 @@ describe('Why this route', () => {
 
     await planTrip(user, { ...chicagoToDallas, routes: [routeOne] });
 
-    expect(why()).toHaveTextContent('Route 1 is the only route found, so there is nothing to compare.');
+    expect(why()).toHaveTextContent(
+      'Route 1 is the only route found, so there is nothing to compare.',
+    );
     expect(within(why()).queryByRole('listitem')).not.toBeInTheDocument();
   });
 });

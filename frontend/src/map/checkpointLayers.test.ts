@@ -49,7 +49,9 @@ describe('checkpoint dot size', () => {
   });
 
   it('grows as the driver zooms in, up to a limit', () => {
-    const radii = [5, 7, 8, 9, 10, 14].map((zoom) => dotRadiusPx(SELECTED_DOT, zoom, chicagoLatitude));
+    const radii = [5, 7, 8, 9, 10, 14].map((zoom) =>
+      dotRadiusPx(SELECTED_DOT, zoom, chicagoLatitude),
+    );
 
     expect(radii[3]).toBeGreaterThan(radii[0]);
     expect([...radii].sort((a, b) => a - b)).toEqual(radii);

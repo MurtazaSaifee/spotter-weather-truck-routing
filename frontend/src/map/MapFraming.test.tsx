@@ -68,7 +68,14 @@ function lastFit() {
 
 describe('framing the map', () => {
   it('shows the whole continental US when there is nothing to show yet, clear of the insets', () => {
-    render(<MapFraming origin={null} destination={null} routes={[]} insets={{ top: 150, bottom: 300 }} />);
+    render(
+      <MapFraming
+        origin={null}
+        destination={null}
+        routes={[]}
+        insets={{ top: 150, bottom: 300 }}
+      />,
+    );
 
     const { bounds, padding, maxZoom } = lastFit();
     expect(bounds).toEqual(CONTINENTAL_US);
@@ -78,7 +85,14 @@ describe('framing the map', () => {
   });
 
   it('fits the routes inside the insets, so none lands under a sheet or a card', () => {
-    render(<MapFraming origin={chicago} destination={dallas} routes={routes} insets={{ top: 150, bottom: 300 }} />);
+    render(
+      <MapFraming
+        origin={chicago}
+        destination={dallas}
+        routes={routes}
+        insets={{ top: 150, bottom: 300 }}
+      />,
+    );
 
     const { padding } = lastFit();
     expect(padding.top).toBeGreaterThanOrEqual(150);
@@ -91,7 +105,9 @@ describe('framing the map', () => {
     );
     const before = fake.map.fitBounds.mock.calls.length;
 
-    rerender(<MapFraming origin={chicago} destination={dallas} routes={routes} insets={{ bottom: 340 }} />);
+    rerender(
+      <MapFraming origin={chicago} destination={dallas} routes={routes} insets={{ bottom: 340 }} />,
+    );
 
     expect(fake.map.fitBounds.mock.calls.length).toBeGreaterThan(before);
     expect(lastFit().padding.bottom).toBeGreaterThanOrEqual(340);
@@ -103,7 +119,9 @@ describe('framing the map', () => {
     );
     const before = fake.map.fitBounds.mock.calls.length;
 
-    rerender(<MapFraming origin={chicago} destination={dallas} routes={routes} insets={{ bottom: 100 }} />);
+    rerender(
+      <MapFraming origin={chicago} destination={dallas} routes={routes} insets={{ bottom: 100 }} />,
+    );
 
     expect(fake.map.fitBounds.mock.calls.length).toBe(before);
   });

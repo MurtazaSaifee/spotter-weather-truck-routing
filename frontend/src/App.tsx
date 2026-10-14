@@ -102,53 +102,53 @@ export default function App() {
   return (
     <ForecastHourContext.Provider value={forecastHour}>
       <HeatmapLayerContext.Provider value={heatmapLayer}>
-       <HeatmapBuildContext.Provider value={heatmapBuild}>
-        <AppShell
-          resultsKey={tripsPlanned}
-          sheetTitle={summary.title}
-          sheetSubtitle={summary.subtitle}
-          panel={
-            <PlannerPanel
-              origin={origin}
-              onOriginChange={setOrigin}
-              destination={destination}
-              onDestinationChange={setDestination}
-              onPlan={handlePlan}
-              isPlanning={planTrip.isPending}
-              planError={planError}
-              planRateLimitWait={planTrip.rateLimitWait}
-              plan={plan}
-              selectedRouteId={selectedRouteId}
-              onSelectRoute={setSelectedRouteId}
-              onIntervalChange={handleIntervalChange}
-            />
-          }
-          map={
-            <MapView
-              origin={origin}
-              destination={destination}
-              routes={plan?.routes ?? []}
-              heatmap={heatmap.data ?? null}
-              timeZone={plan?.origin_time_zone ?? null}
-              selectedRouteId={selectedRouteId}
-              recommendedRouteId={plan?.recommended_route_id ?? null}
-              onSelectRoute={setSelectedRouteId}
-            />
-          }
-          controls={
-            <HeatmapControls
-              status={heatmapStatus}
-              rateLimitWait={heatmap.rateLimitWait}
-              departure={plan?.departure ?? null}
-              timeZone={plan?.origin_time_zone ?? null}
-              layer={heatmapLayer}
-              onLayerChange={setHeatmapLayer}
-              route={plan?.routes.find(({ id }) => id === selectedRouteId) ?? null}
-              onRetry={retryHeatmap}
-            />
-          }
-        />
-       </HeatmapBuildContext.Provider>
+        <HeatmapBuildContext.Provider value={heatmapBuild}>
+          <AppShell
+            resultsKey={tripsPlanned}
+            sheetTitle={summary.title}
+            sheetSubtitle={summary.subtitle}
+            panel={
+              <PlannerPanel
+                origin={origin}
+                onOriginChange={setOrigin}
+                destination={destination}
+                onDestinationChange={setDestination}
+                onPlan={handlePlan}
+                isPlanning={planTrip.isPending}
+                planError={planError}
+                planRateLimitWait={planTrip.rateLimitWait}
+                plan={plan}
+                selectedRouteId={selectedRouteId}
+                onSelectRoute={setSelectedRouteId}
+                onIntervalChange={handleIntervalChange}
+              />
+            }
+            map={
+              <MapView
+                origin={origin}
+                destination={destination}
+                routes={plan?.routes ?? []}
+                heatmap={heatmap.data ?? null}
+                timeZone={plan?.origin_time_zone ?? null}
+                selectedRouteId={selectedRouteId}
+                recommendedRouteId={plan?.recommended_route_id ?? null}
+                onSelectRoute={setSelectedRouteId}
+              />
+            }
+            controls={
+              <HeatmapControls
+                status={heatmapStatus}
+                rateLimitWait={heatmap.rateLimitWait}
+                departure={plan?.departure ?? null}
+                timeZone={plan?.origin_time_zone ?? null}
+                layer={heatmapLayer}
+                onLayerChange={setHeatmapLayer}
+                route={plan?.routes.find(({ id }) => id === selectedRouteId) ?? null}
+                onRetry={retryHeatmap}
+              />
+            }
+          />
+        </HeatmapBuildContext.Provider>
       </HeatmapLayerContext.Provider>
     </ForecastHourContext.Provider>
   );

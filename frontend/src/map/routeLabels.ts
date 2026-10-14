@@ -130,9 +130,7 @@ export function placeLabels(
 
   for (const { route } of ordered) {
     const screen = projected.get(route.id)!;
-    const others = routes
-      .filter(({ id }) => id !== route.id)
-      .map(({ id }) => projected.get(id)!);
+    const others = routes.filter(({ id }) => id !== route.id).map(({ id }) => projected.get(id)!);
     const [width, height] = route.size;
     const clearAt = Math.hypot(width, height) / 2 + LABEL_GAP_PX;
     const area = visibleArea(view, route.size);
@@ -228,7 +226,10 @@ function distanceToSegment([px, py]: Point, [ax, ay]: Point, [bx, by]: Point): n
   const dx = bx - ax;
   const dy = by - ay;
   const lengthSquared = dx * dx + dy * dy;
-  const t = lengthSquared === 0 ? 0 : Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / lengthSquared));
+  const t =
+    lengthSquared === 0
+      ? 0
+      : Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / lengthSquared));
   return Math.hypot(px - (ax + t * dx), py - (ay + t * dy));
 }
 
@@ -255,8 +256,14 @@ function sample(path: LngLat[], screen: Point[], project: LabelView['project']):
       const t = length === 0 ? 0 : (next - travelled) / length;
       const [from, to] = [line[i], line[i + 1]];
       samples.push({
-        point: [from.point[0] + (to.point[0] - from.point[0]) * t, from.point[1] + (to.point[1] - from.point[1]) * t],
-        lngLat: [from.lngLat[0] + (to.lngLat[0] - from.lngLat[0]) * t, from.lngLat[1] + (to.lngLat[1] - from.lngLat[1]) * t],
+        point: [
+          from.point[0] + (to.point[0] - from.point[0]) * t,
+          from.point[1] + (to.point[1] - from.point[1]) * t,
+        ],
+        lngLat: [
+          from.lngLat[0] + (to.lngLat[0] - from.lngLat[0]) * t,
+          from.lngLat[1] + (to.lngLat[1] - from.lngLat[1]) * t,
+        ],
         along: next / total,
       });
     }
@@ -274,7 +281,12 @@ const BORDER_COLORS: Record<LabelTone, [number, number, number]> = {
   blocked: rgb(palette.error.main),
   plain: rgb(palette.grey[500]),
 };
-const BORDER_WIDTHS: Record<LabelTone, number> = { selected: 2, recommended: 1.5, blocked: 1.5, plain: 1 };
+const BORDER_WIDTHS: Record<LabelTone, number> = {
+  selected: 2,
+  recommended: 1.5,
+  blocked: 1.5,
+  plain: 1,
+};
 
 /**
  * The labels as a deck.gl layer; pressing one selects its route, like pressing the line. Where

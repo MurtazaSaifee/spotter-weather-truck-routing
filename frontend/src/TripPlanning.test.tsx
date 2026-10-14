@@ -34,7 +34,12 @@ function answerPlansWith(response: () => Response | Promise<Response>) {
 
 const planOk = () => HttpResponse.json(chicagoToDallas);
 
-async function choosePlace(user: UserEvent, field: 'Origin' | 'Destination', text: string, label: string) {
+async function choosePlace(
+  user: UserEvent,
+  field: 'Origin' | 'Destination',
+  text: string,
+  label: string,
+) {
   await user.type(screen.getByRole('combobox', { name: field }), text);
   await user.click(await screen.findByRole('option', { name: label }));
 }
@@ -284,9 +289,18 @@ describe('planning a trip', () => {
 
     await screen.findByText('Route 1');
     const map = screen.getByRole('region', { name: 'Map' });
-    expect(within(map).getByRole('button', { name: 'Route 1 on map' })).toHaveAttribute('aria-pressed', 'true');
-    expect(within(map).getByRole('button', { name: 'Route 2 on map' })).toHaveAttribute('aria-pressed', 'false');
-    expect(within(map).getByRole('button', { name: 'Route 3 on map' })).toHaveAttribute('aria-pressed', 'false');
+    expect(within(map).getByRole('button', { name: 'Route 1 on map' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    expect(within(map).getByRole('button', { name: 'Route 2 on map' })).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    );
+    expect(within(map).getByRole('button', { name: 'Route 3 on map' })).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    );
   });
 
   it('highlights a route on the map when its card is pressed, and the card when the route is picked on the map', async () => {
@@ -329,7 +343,9 @@ describe('planning a trip', () => {
 
     await user.click(planButton());
 
-    expect(await screen.findByText('Only 1 distinct route exists between these places, not three.')).toBeInTheDocument();
+    expect(
+      await screen.findByText('Only 1 distinct route exists between these places, not three.'),
+    ).toBeInTheDocument();
   });
 
   it.each([
@@ -337,12 +353,16 @@ describe('planning a trip', () => {
       422,
       {
         code: 'no_route_found',
-        message: 'No truck route was found between these places. Try a different origin or destination.',
+        message:
+          'No truck route was found between these places. Try a different origin or destination.',
       },
     ],
     [
       503,
-      { code: 'routing_unavailable', message: 'Route planning is unavailable right now. Please try again.' },
+      {
+        code: 'routing_unavailable',
+        message: 'Route planning is unavailable right now. Please try again.',
+      },
     ],
   ])('shows the API message when planning fails with %s', async (status, body) => {
     answerPlansWith(() => HttpResponse.json(body, { status }));
@@ -364,7 +384,10 @@ describe('planning a trip', () => {
     await screen.findByText('Route 3');
 
     answerPlansWith(() =>
-      HttpResponse.json({ ...chicagoToDallas, routes: [routeTwo, routeThree].map((r, i) => ({ ...r, id: `route-${i + 1}` })) }),
+      HttpResponse.json({
+        ...chicagoToDallas,
+        routes: [routeTwo, routeThree].map((r, i) => ({ ...r, id: `route-${i + 1}` })),
+      }),
     );
     await user.click(planButton());
 

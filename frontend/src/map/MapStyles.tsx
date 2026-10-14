@@ -47,13 +47,17 @@ export function MapStyles() {
           borderRadius: theme.shape.borderRadius,
         },
         '@media (pointer: coarse)': {
-          '.maplibregl-ctrl.maplibregl-ctrl-attrib.maplibregl-compact:not(.maplibregl-compact-show)': {
-            boxSizing: 'border-box',
-            width: TOUCH_TARGET,
-            height: TOUCH_TARGET,
-            padding: 0,
+          '.maplibregl-ctrl.maplibregl-ctrl-attrib.maplibregl-compact:not(.maplibregl-compact-show)':
+            {
+              boxSizing: 'border-box',
+              width: TOUCH_TARGET,
+              height: TOUCH_TARGET,
+              padding: 0,
+            },
+          '.maplibregl-ctrl.maplibregl-ctrl-attrib.maplibregl-compact-show': {
+            padding: '4px 48px 4px 10px',
+            minHeight: TOUCH_TARGET,
           },
-          '.maplibregl-ctrl.maplibregl-ctrl-attrib.maplibregl-compact-show': { padding: '4px 48px 4px 10px', minHeight: TOUCH_TARGET },
           '.maplibregl-ctrl-attrib.maplibregl-compact .maplibregl-ctrl-attrib-button': {
             width: TOUCH_TARGET,
             height: TOUCH_TARGET,
@@ -62,7 +66,11 @@ export function MapStyles() {
             backgroundPosition: 'center',
           },
           '.maplibregl-ctrl-group button': { width: TOUCH_TARGET, height: TOUCH_TARGET },
-          '.maplibregl-popup-close-button': { width: TOUCH_TARGET, height: TOUCH_TARGET, fontSize: 24 },
+          '.maplibregl-popup-close-button': {
+            width: TOUCH_TARGET,
+            height: TOUCH_TARGET,
+            fontSize: 24,
+          },
         },
         // The popup's content sets its own padding and size, which the placement relies on.
         '.maplibregl-popup-content': {
