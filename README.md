@@ -143,8 +143,8 @@ Every error has the same body, `{"code", "message", "details"?}`:
 | 400 | `validation_error` | `details.fields` names each bad field. |
 | 404 | `not_found` | Unknown path. No endpoint looks up a resource by id, so no other 404 exists. |
 | 422 | `no_route_found` | HERE has no truck route between the places. |
-| 429 | `rate_limit_exceeded` | The visitor's hourly allowance is used up. `details.retry_after_seconds`. |
-| 429 | `weather_rate_limited` | Open-Meteo is limiting requests. `details.retry_after_seconds`. |
+| 429 | `rate_limit_exceeded` | The visitor's hourly allowance is used up. `details.retry_after_seconds`, also sent as the `Retry-After` header (whole seconds). |
+| 429 | `weather_rate_limited` | Open-Meteo is limiting requests. `details.retry_after_seconds`, also sent as the `Retry-After` header. |
 | 503 | `routing_unavailable`, `weather_unavailable`, `places_unavailable` | A provider failed or timed out. Failures are never cached. |
 
 ### Rate limits

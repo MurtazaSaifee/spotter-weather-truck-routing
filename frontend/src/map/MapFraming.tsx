@@ -26,7 +26,7 @@ interface Target {
 /**
  * Moves the camera to what the driver is working on: all the routes once there are some,
  * otherwise the chosen places. The fit is made against the map's real size and kept clear of
- * `insets`, and made again when the map is resized or the insets change, until the driver
+ * `insets` and of the map's own controls on the right, and made again when the map is resized or the insets change, until the driver
  * moves the camera themselves. Must sit inside a `Map`.
  */
 export function MapFraming({ origin, destination, routes, insets }: MapFramingProps) {

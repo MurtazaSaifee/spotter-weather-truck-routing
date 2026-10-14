@@ -107,6 +107,7 @@ SPECTACULAR_SETTINGS = {
     "POSTPROCESSING_HOOKS": [
         "drf_spectacular.hooks.postprocess_schema_enums",
         "api.schema_examples.set_example_departures",
+        "api.schema_examples.document_retry_after",
     ],
     "SWAGGER_UI_DIST": SWAGGER_UI_DIST,
     "SWAGGER_UI_FAVICON_HREF": f"{SWAGGER_UI_DIST}/favicon-32x32.png",

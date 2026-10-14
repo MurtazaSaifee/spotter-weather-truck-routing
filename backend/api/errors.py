@@ -40,7 +40,11 @@ def error_body(code: str, message: str, details: Any = None) -> dict[str, Any]:
 def exception_handler(exc: Exception, context: dict[str, Any]) -> Response:
     """DRF ``EXCEPTION_HANDLER``: translate any exception raised in a view."""
     if isinstance(exc, ApiError):
-        return Response(error_body(exc.code, exc.message, exc.details), status=exc.status_code)
+        return Response(
+            error_body(exc.code, exc.message, exc.details),
+            status=exc.status_code,
+            headers=_retry_after_header(exc),
+        )
     if isinstance(exc, Http404):
         exc = exceptions.NotFound()
     if isinstance(exc, exceptions.ValidationError):
@@ -56,6 +60,12 @@ def exception_handler(exc: Exception, context: dict[str, Any]) -> Response:
 
     logger.exception("Unhandled error in %s", type(context.get("view")).__name__)
     return Response(error_body("internal_error", INTERNAL_ERROR_MESSAGE), status=500)
+
+
+def _retry_after_header(exc: ApiError) -> dict[str, str]:
+    """The standard ``Retry-After`` (whole seconds) for an error that says how long to wait."""
+    seconds = (exc.details or {}).get("retry_after_seconds")
+    return {"Retry-After": str(seconds)} if isinstance(seconds, int) else {}
 
 
 def _first_message(errors: Any, path: str = "") -> str:

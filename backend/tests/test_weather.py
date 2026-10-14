@@ -407,6 +407,18 @@ def test_a_429_is_weather_rate_limited_with_the_retry_after_the_provider_gave(
     assert body["details"] == {"retry_after_seconds": 7}
 
 
+def test_a_weather_429_carries_a_retry_after_header_matching_the_body(
+    client, outbound_http, open_meteo
+):
+    hundred_mile_route(outbound_http)
+    rate_limited(open_meteo, **{"Retry-After": "7"})
+
+    response = post_plan(client)
+
+    assert response.status_code == 429
+    assert response["Retry-After"] == "7"
+
+
 def test_a_retry_after_date_is_converted_to_seconds(client, outbound_http, open_meteo):
     hundred_mile_route(outbound_http)
     rate_limited(open_meteo, **{"Retry-After": "Wed, 14 Oct 2026 15:00:30 GMT"})

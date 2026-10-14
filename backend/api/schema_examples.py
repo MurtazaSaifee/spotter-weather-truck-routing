@@ -43,6 +43,27 @@ def set_example_departures(result, generator, request, public):
     return result
 
 
+def document_retry_after(result, generator, request, public):
+    """drf-spectacular postprocessing hook: every 429 documents its ``Retry-After`` header.
+
+    ``errors.exception_handler`` sends the header with any error that carries
+    ``details.retry_after_seconds``; this keeps the docs from needing it spelled out per endpoint.
+    """
+    for operations in result["paths"].values():
+        for operation in operations.values():
+            too_many = operation["responses"].get("429")
+            if too_many is not None:
+                too_many["headers"] = {"Retry-After": RETRY_AFTER_HEADER}
+    return result
+
+
+RETRY_AFTER_HEADER = {
+    "description": "Whole seconds to wait before asking again: `details.retry_after_seconds`.",
+    "required": True,
+    "schema": {"type": "integer"},
+}
+
+
 def error_response(description: str, *examples: OpenApiExample) -> OpenApiResponse:
     return OpenApiResponse(ErrorSerializer, description=description, examples=list(examples))
 
