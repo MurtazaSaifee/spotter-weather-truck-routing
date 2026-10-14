@@ -8,6 +8,7 @@ import { HeatmapControls, type HeatmapStatus } from './heatmap/HeatmapControls';
 import { DEFAULT_HEATMAP_LAYER, type HeatmapLayer, HeatmapLayerContext } from './heatmap/layer';
 import { AppShell } from './layout/AppShell';
 import { MapView } from './map/MapView';
+import { sheetSummary } from './panel/sheetSummary';
 import { PlannerPanel } from './panel/PlannerPanel';
 import { leadRouteId } from './trip/ranking';
 
@@ -22,6 +23,9 @@ export default function App() {
   const [submitted, setSubmitted] = useState<PlanRequest | null>(null);
   const [plan, setPlan] = useState<Plan | null>(null);
   const [selectedRouteId, setSelectedRouteId] = useState<string | null>(null);
+  // Counts trips planned, so the phone's sheet can rise to each new set of results (and not
+  // to the same trip planned again with another interval).
+  const [tripsPlanned, setTripsPlanned] = useState(0);
   // The hour on the forecast slider. It is a store rather than state: the map layers follow
   // it directly, so a slider tick re-renders nothing above the slider's own label.
   const [forecastHour] = useState(createForecastHourStore);
@@ -44,12 +48,15 @@ export default function App() {
     [plan, submitted],
   );
   const heatmap = useHeatmap(heatmapRequest);
-  const heatmapStatus: HeatmapStatus = heatmap.isError
-    ? 'error'
-    : heatmap.data
-      ? 'ready'
-      : 'loading';
+  const heatmapStatus: HeatmapStatus = !plan
+    ? 'idle'
+    : heatmap.isError
+      ? 'error'
+      : heatmap.data
+        ? 'ready'
+        : 'loading';
 
+  const summary = sheetSummary(plan, planTrip.isPending);
   const planError = planTrip.error instanceof ApiError ? planTrip.error : null;
 
   function handlePlan(request: PlanRequest) {
@@ -60,6 +67,7 @@ export default function App() {
       onSuccess: (planned) => {
         setPlan(planned);
         setSelectedRouteId(leadRouteId(planned));
+        setTripsPlanned((count) => count + 1);
       },
     });
   }
@@ -75,6 +83,9 @@ export default function App() {
     <ForecastHourContext.Provider value={forecastHour}>
       <HeatmapLayerContext.Provider value={heatmapLayer}>
         <AppShell
+          resultsKey={tripsPlanned}
+          sheetTitle={summary.title}
+          sheetSubtitle={summary.subtitle}
           panel={
             <PlannerPanel
               origin={origin}
@@ -101,20 +112,18 @@ export default function App() {
               selectedRouteId={selectedRouteId}
               recommendedRouteId={plan?.recommended_route_id ?? null}
               onSelectRoute={setSelectedRouteId}
-              controls={
-                plan ? (
-                  <HeatmapControls
-                    status={heatmapStatus}
-                    rateLimitWait={heatmap.rateLimitWait}
-                    departure={plan.departure}
-                    timeZone={plan.origin_time_zone}
-                    layer={heatmapLayer}
-                    onLayerChange={setHeatmapLayer}
-                    route={plan.routes.find(({ id }) => id === selectedRouteId) ?? null}
-                    onRetry={() => void heatmap.refetch()}
-                  />
-                ) : null
-              }
+            />
+          }
+          controls={
+            <HeatmapControls
+              status={heatmapStatus}
+              rateLimitWait={heatmap.rateLimitWait}
+              departure={plan?.departure ?? null}
+              timeZone={plan?.origin_time_zone ?? null}
+              layer={heatmapLayer}
+              onLayerChange={setHeatmapLayer}
+              route={plan?.routes.find(({ id }) => id === selectedRouteId) ?? null}
+              onRetry={() => void heatmap.refetch()}
             />
           }
         />
