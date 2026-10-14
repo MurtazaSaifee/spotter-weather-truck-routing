@@ -72,6 +72,33 @@ describe('the recommendation', () => {
     );
   });
 
+  it('hands the map the recommended route and which routes are blocked', async () => {
+    const user = userEvent.setup();
+    renderApp();
+
+    await planTrip(user, chicagoToDallasStormOnRouteOne);
+
+    const onMap = (n: number) => screen.getByRole('button', { name: `Route ${n} on map` });
+    expect(onMap(2)).toHaveAttribute('data-recommended', 'true');
+    expect(onMap(1)).toHaveAttribute('data-recommended', 'false');
+    expect(onMap(3)).toHaveAttribute('data-blocked', 'true');
+    expect(onMap(2)).toHaveAttribute('data-blocked', 'false');
+  });
+
+  it('hands the map no recommended route when every route is blocked', async () => {
+    const user = userEvent.setup();
+    renderApp();
+
+    await planTrip(user, chicagoToDallasAllBlocked);
+
+    for (const n of [1, 2, 3]) {
+      expect(screen.getByRole('button', { name: `Route ${n} on map` })).toHaveAttribute(
+        'data-recommended',
+        'false',
+      );
+    }
+  });
+
   it('lists the cards best first, with the rank, a Recommended mark and a Blocked mark', async () => {
     const user = userEvent.setup();
     renderApp();

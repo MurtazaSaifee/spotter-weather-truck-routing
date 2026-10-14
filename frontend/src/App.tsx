@@ -63,6 +63,7 @@ export default function App() {
           routes={plan?.routes ?? []}
           timeZone={plan?.origin_time_zone ?? null}
           selectedRouteId={selectedRouteId}
+          recommendedRouteId={plan?.recommended_route_id ?? null}
           onSelectRoute={setSelectedRouteId}
         />
       }

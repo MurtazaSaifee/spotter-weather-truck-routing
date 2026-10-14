@@ -22,6 +22,8 @@ import { MapFraming } from './MapFraming';
 import { PlacePins } from './PlacePins';
 import { decodePolyline } from './polyline';
 import { createRouteLayers, ROUTE_PICKING_RADIUS_PX } from './routeLayers';
+import { createRouteLabelLayer, routeLabelsFor } from './routeLabels';
+import { routeLabels } from '../trip/ranking';
 
 const WEATHER_ATTRIBUTION =
   '<a href="https://open-meteo.com/" target="_blank" rel="noreferrer">Weather data by Open-Meteo.com</a> ' +
@@ -39,6 +41,7 @@ interface TripMapProps {
   /** The origin's zone, which checkpoint ETAs are shown in; null until there is a plan. */
   timeZone: string | null;
   selectedRouteId: string | null;
+  recommendedRouteId: string | null;
   onSelectRoute: (id: string) => void;
 }
 
@@ -48,6 +51,7 @@ export default function TripMap({
   routes,
   timeZone,
   selectedRouteId,
+  recommendedRouteId,
   onSelectRoute,
 }: TripMapProps) {
   const theme = useTheme();
@@ -68,11 +72,28 @@ export default function TripMap({
   const stillShown = (dot: CheckpointDot | null) => (dot && dots.includes(dot) ? dot : null);
   const described = stillShown(hovered) ?? stillShown(pinned);
 
-  const selectedColor = theme.palette.primary.main;
-  const otherColor = theme.palette.grey[500];
+  const blockedRouteIds = useMemo(
+    () => new Set(routes.filter((route) => route.blocked).map((route) => route.id)),
+    [routes],
+  );
+  const labels = useMemo(
+    () => routeLabelsFor(routes, paths, routeLabels(routes), recommendedRouteId),
+    [routes, paths, recommendedRouteId],
+  );
+
   const layers = [
-    ...createRouteLayers({ paths, selectedRouteId, onSelectRoute, selectedColor, otherColor }),
+    ...createRouteLayers({
+      paths,
+      selectedRouteId,
+      recommendedRouteId,
+      blockedRouteIds,
+      onSelectRoute,
+      selectedColor: theme.palette.primary.main,
+      recommendedColor: theme.palette.primary.dark,
+      otherColor: theme.palette.grey[500],
+    }),
     ...createCheckpointLayers({ dots, selectedRouteId }),
+    createRouteLabelLayer(labels, onSelectRoute),
   ];
 
   return (

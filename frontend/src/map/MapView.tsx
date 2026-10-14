@@ -13,6 +13,8 @@ interface MapViewProps {
   routes: PlannedRoute[];
   timeZone: string | null;
   selectedRouteId: string | null;
+  /** Drawn thicker and on top; null when no route can be recommended. */
+  recommendedRouteId: string | null;
   onSelectRoute: (id: string) => void;
 }
 
