@@ -17,6 +17,9 @@ NORTH_AMERICA_LNG = (-170.0, -50.0)
 # A driver who took a moment to submit has a departure a few minutes in the past; the
 # default "next full hour" must never be rejected for that.
 DEPARTURE_GRACE = timedelta(minutes=15)
+# The heatmap is asked for with the departure the plan accepted, sent again later: after a
+# rate-limit wait, or by a page that has been open a while. It takes a longer delay.
+HEATMAP_DEPARTURE_GRACE = timedelta(hours=1)
 DEPARTURE_HORIZON = timedelta(hours=48)
 
 MAX_LOAD_WEIGHT_LB = 50_000
@@ -56,13 +59,30 @@ class LoadWeightField(serializers.IntegerField):
         super().__init__(**kwargs)
 
 
-def check_departure_window(value: datetime) -> datetime:
-    """``value`` if it is no more than 15 minutes ago and no more than 48 hours ahead."""
+def duration_text(span: timedelta) -> str:
+    """``span`` for people: ``15 minutes``, ``1 hour``, ``48 hours``."""
+    minutes = int(span.total_seconds() // 60)
+    hours, remainder = divmod(minutes, 60)
+    count, unit = (hours, "hour") if hours and not remainder else (minutes, "minute")
+    return f"{count} {unit}{'' if count == 1 else 's'}"
+
+
+def departure_window_text(grace: timedelta = DEPARTURE_GRACE) -> str:
+    """The departure window as the help texts say it: ``From 15 minutes ago to 48 hours ahead``."""
+    return f"From {duration_text(grace)} ago to {duration_text(DEPARTURE_HORIZON)} ahead"
+
+
+def check_departure_window(value: datetime, grace: timedelta = DEPARTURE_GRACE) -> datetime:
+    """``value`` if it is no more than ``grace`` ago and no more than 48 hours ahead."""
     now = timezone.now()
-    if value < now - DEPARTURE_GRACE:
-        raise serializers.ValidationError("Departure can't be more than 15 minutes ago.")
+    if value < now - grace:
+        raise serializers.ValidationError(
+            f"Departure can't be more than {duration_text(grace)} ago."
+        )
     if value > now + DEPARTURE_HORIZON:
-        raise serializers.ValidationError("Departure can't be more than 48 hours ahead.")
+        raise serializers.ValidationError(
+            f"Departure can't be more than {duration_text(DEPARTURE_HORIZON)} ahead."
+        )
     return value
 
 
@@ -91,8 +111,7 @@ class PlanRequestSerializer(serializers.Serializer):
     destination = TripPlaceSerializer()
     departure = OffsetDateTimeField(
         help_text=(
-            "When the truck leaves, as ISO-8601 with a UTC offset. From 15 minutes ago "
-            "to 48 hours ahead."
+            f"When the truck leaves, as ISO-8601 with a UTC offset. {departure_window_text()}."
         )
     )
     load_weight_lb = LoadWeightField()

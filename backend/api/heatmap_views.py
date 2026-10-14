@@ -20,11 +20,13 @@ from .schema_examples import (
     RATE_LIMIT_429,
 )
 from .serializers import (
+    HEATMAP_DEPARTURE_GRACE,
     NORTH_AMERICA_LAT,
     NORTH_AMERICA_LNG,
     LoadWeightField,
     OffsetDateTimeField,
     check_departure_window,
+    departure_window_text,
 )
 
 MAX_GEOMETRIES = 3
@@ -47,8 +49,10 @@ class HeatmapRequestSerializer(serializers.Serializer):
     )
     departure = OffsetDateTimeField(
         help_text=(
-            "When the truck leaves, as ISO-8601 with a UTC offset. From 15 minutes ago "
-            "to 48 hours ahead. The frames run from here to 48 hours after."
+            "When the truck leaves, as ISO-8601 with a UTC offset. "
+            f"{departure_window_text(HEATMAP_DEPARTURE_GRACE)}: the plan's departure is "
+            "sent again, possibly after a wait, so this takes a longer delay than the plan. "
+            "The frames run from here to 48 hours after."
         )
     )
     load_weight_lb = LoadWeightField()
@@ -57,7 +61,7 @@ class HeatmapRequestSerializer(serializers.Serializer):
         return [_decode(encoded) for encoded in value]
 
     def validate_departure(self, value: datetime) -> datetime:
-        return check_departure_window(value)
+        return check_departure_window(value, HEATMAP_DEPARTURE_GRACE)
 
 
 def _decode(encoded: str) -> list[Point]:

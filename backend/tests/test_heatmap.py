@@ -334,9 +334,23 @@ def test_a_geometry_with_too_many_vertices_is_refused(client):
 
 
 def test_the_departure_must_be_in_the_planning_window(client):
-    error_of(post_heatmap(client, departure="2026-10-14T09:00:00-05:00"), "departure")  # 10:00 GMT
+    error_of(post_heatmap(client, departure="2026-10-14T08:00:00-05:00"), "departure")  # 2 h ago
     error_of(post_heatmap(client, departure="2026-10-17T09:00:00-05:00"), "departure")
     error_of(post_heatmap(client, departure="2026-10-15T08:00:00"), "departure")
+
+
+def test_the_heatmap_still_takes_a_departure_the_plan_accepted_up_to_an_hour_ago(client):
+    # The plan takes 15 minutes of grace; the browser sends its departure again later, after a
+    # rate-limit wait or a long-open page, and must not be refused for the delay.
+    def minutes_from_now(minutes):
+        return (datetime.fromisoformat(NOW) + timedelta(minutes=minutes)).isoformat()
+
+    assert post_heatmap(client, departure=minutes_from_now(-60)).status_code == 200
+    assert post_heatmap(client, departure=minutes_from_now(48 * 60)).status_code == 200
+    late = post_heatmap(client, departure=minutes_from_now(-61))
+    error_of(late, "departure")
+    assert "1 hour ago" in late.json()["details"]["fields"]["departure"][0]
+    error_of(post_heatmap(client, departure=minutes_from_now(48 * 60 + 1)), "departure")
 
 
 def test_the_load_weight_must_be_positive_and_at_most_50000_lb(client):
