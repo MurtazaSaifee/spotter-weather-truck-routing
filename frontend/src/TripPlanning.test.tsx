@@ -310,12 +310,17 @@ describe('planning a trip', () => {
     expect(card(2)).toHaveAttribute('aria-pressed', 'false');
   });
 
-  it('shows the plan notices', async () => {
+  it('shows the fewer-than-three-routes notice', async () => {
     answerPlansWith(() =>
       HttpResponse.json({
         ...chicagoToDallas,
         routes: [routeOne],
-        notices: [{ code: 'fewer_routes', message: 'Only one route exists between these places.' }],
+        notices: [
+          {
+            code: 'fewer_than_three_routes',
+            message: 'Only 1 distinct route exists between these places, not three.',
+          },
+        ],
       }),
     );
     const user = userEvent.setup();
@@ -324,7 +329,7 @@ describe('planning a trip', () => {
 
     await user.click(planButton());
 
-    expect(await screen.findByText('Only one route exists between these places.')).toBeInTheDocument();
+    expect(await screen.findByText('Only 1 distinct route exists between these places, not three.')).toBeInTheDocument();
   });
 
   it.each([
