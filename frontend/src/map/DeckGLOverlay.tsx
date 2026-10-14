@@ -6,6 +6,8 @@ import type { LayerStore } from './layerStore';
 type DeckGLOverlayProps = MapboxOverlayProps & {
   /** Layers drawn under `layers` that change on their own, outside React (the heatmap). */
   underlay?: LayerStore;
+  /** Layers drawn over `layers`, likewise changing outside React (the truck). */
+  topLayers?: LayerStore;
 };
 
 /**
@@ -13,9 +15,10 @@ type DeckGLOverlayProps = MapboxOverlayProps & {
  * layers can sit between base-map layers, e.g. a heatmap under road labels.
  *
  * There is one overlay per map (deck.gl shares a single Deck between overlays), so the
- * heatmap's layers come in through `underlay` and are merged here with the layers React owns.
+ * heatmap's layers come in through `underlay` and the truck's through `topLayers`, and they are
+ * merged here with the layers React owns.
  */
-export function DeckGLOverlay({ underlay, ...props }: DeckGLOverlayProps) {
+export function DeckGLOverlay({ underlay, topLayers, ...props }: DeckGLOverlayProps) {
   const { current: mapRef } = useMap();
   const [overlay] = useState(() => new MapboxOverlay({ ...props, interleaved: true }));
 
@@ -34,17 +37,25 @@ export function DeckGLOverlay({ underlay, ...props }: DeckGLOverlayProps) {
     };
   }, [mapRef, overlay]);
 
-  overlay.setProps({ ...props, layers: [underlay?.get() ?? [], props.layers] });
+  overlay.setProps({
+    ...props,
+    layers: [underlay?.get() ?? [], props.layers, topLayers?.get() ?? []],
+  });
 
   const latest = useRef(props.layers);
   useEffect(() => {
     latest.current = props.layers;
   });
   useEffect(() => {
-    if (!underlay) return;
-    return underlay.subscribe(() => {
-      overlay.setProps({ layers: [underlay.get(), latest.current] });
-    });
-  }, [underlay, overlay]);
+    const refresh = () => {
+      overlay.setProps({
+        layers: [underlay?.get() ?? [], latest.current, topLayers?.get() ?? []],
+      });
+    };
+    const unsubscribes = [underlay, topLayers].flatMap((store) =>
+      store ? [store.subscribe(refresh)] : [],
+    );
+    return () => unsubscribes.forEach((unsubscribe) => unsubscribe());
+  }, [underlay, topLayers, overlay]);
   return null;
 }

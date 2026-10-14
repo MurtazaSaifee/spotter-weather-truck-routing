@@ -101,6 +101,7 @@ export default function App() {
                   rateLimitWait={heatmap.rateLimitWait}
                   departure={plan.departure}
                   timeZone={plan.origin_time_zone}
+                  route={plan.routes.find(({ id }) => id === selectedRouteId) ?? null}
                   onRetry={() => void heatmap.refetch()}
                 />
               ) : null
