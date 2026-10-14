@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import type { Heatmap } from '../api/heatmap';
 import type { Checkpoint, PlannedRoute } from '../api/plan';
 import type { Place } from '../api/places';
 import { CheckpointDetails } from '../map/CheckpointDetails';
@@ -7,6 +8,7 @@ interface TripMapStubProps {
   origin: Place | null;
   destination: Place | null;
   routes: PlannedRoute[];
+  heatmap: Heatmap | null;
   timeZone: string | null;
   selectedRouteId: string | null;
   onSelectRoute: (id: string) => void;
@@ -25,6 +27,7 @@ export default function TripMapStub({
   origin,
   destination,
   routes,
+  heatmap,
   timeZone,
   selectedRouteId,
   onSelectRoute,
@@ -34,6 +37,11 @@ export default function TripMapStub({
   );
   return (
     <div role="region" aria-label="Map">
+      {heatmap && (
+        <div role="img" aria-label="Forecast heatmap">
+          {`${heatmap.timestamps.length} frames`}
+        </div>
+      )}
       {origin && <StubPin kind="Origin" place={origin} />}
       {destination && <StubPin kind="Destination" place={destination} />}
       {routes.map((route, index) => (

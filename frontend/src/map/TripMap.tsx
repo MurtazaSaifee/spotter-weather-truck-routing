@@ -8,6 +8,7 @@ import {
   NavigationControl,
   Popup,
 } from 'react-map-gl/maplibre';
+import type { Heatmap } from '../api/heatmap';
 import type { PlannedRoute } from '../api/plan';
 import type { Place } from '../api/places';
 import { CheckpointDetails } from './CheckpointDetails';
@@ -18,6 +19,8 @@ import {
   type CheckpointDot,
 } from './checkpointLayers';
 import { DeckGLOverlay } from './DeckGLOverlay';
+import { HeatmapLayers } from './HeatmapLayers';
+import { createLayerStore } from './layerStore';
 import { MapFraming } from './MapFraming';
 import { PlacePins } from './PlacePins';
 import { decodePolyline } from './polyline';
@@ -36,6 +39,8 @@ interface TripMapProps {
   origin: Place | null;
   destination: Place | null;
   routes: PlannedRoute[];
+  /** The forecast heatmap over the routes; null until it arrives. */
+  heatmap: Heatmap | null;
   /** The origin's zone, which checkpoint ETAs are shown in; null until there is a plan. */
   timeZone: string | null;
   selectedRouteId: string | null;
@@ -46,11 +51,15 @@ export default function TripMap({
   origin,
   destination,
   routes,
+  heatmap,
   timeZone,
   selectedRouteId,
   onSelectRoute,
 }: TripMapProps) {
   const theme = useTheme();
+  // The heatmap's layers change every animation frame while it fades; they live in a store the
+  // overlay reads, so a slider tick never re-renders this component.
+  const [heatmapLayers] = useState(createLayerStore);
   // Decoding is the expensive part; selecting a route must not repeat it. Planning again
   // with another interval returns new route objects with the same lines: keep the decoded
   // paths, so the camera stays where the driver left it.
@@ -93,8 +102,10 @@ export default function TripMap({
       <NavigationControl position="top-right" />
       <PlacePins origin={origin} destination={destination} />
       <MapFraming origin={origin} destination={destination} routes={paths} />
+      <HeatmapLayers heatmap={heatmap} underlay={heatmapLayers} />
       <DeckGLOverlay
         layers={layers}
+        underlay={heatmapLayers}
         pickingRadius={ROUTE_PICKING_RADIUS_PX}
         onHover={(info) => setHovered(dotAt(info))}
         onClick={(info) => setPinned(dotAt(info))}

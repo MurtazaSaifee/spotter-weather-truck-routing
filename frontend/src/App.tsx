@@ -1,7 +1,10 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { ApiError } from './api/client';
+import { type HeatmapRequest, useHeatmap } from './api/heatmap';
 import { type Plan, type PlanRequest, type SamplingInterval, usePlanTrip } from './api/plan';
 import type { Place } from './api/places';
+import { createForecastHourStore, ForecastHourContext } from './heatmap/forecastHour';
+import { HeatmapControls, type HeatmapStatus } from './heatmap/HeatmapControls';
 import { AppShell } from './layout/AppShell';
 import { MapView } from './map/MapView';
 import { PlannerPanel } from './panel/PlannerPanel';
@@ -17,12 +20,37 @@ export default function App() {
   const [submitted, setSubmitted] = useState<PlanRequest | null>(null);
   const [plan, setPlan] = useState<Plan | null>(null);
   const [selectedRouteId, setSelectedRouteId] = useState<string | null>(null);
+  // The hour on the forecast slider. It is a store rather than state: the map layers follow
+  // it directly, so a slider tick re-renders nothing above the slider's own label.
+  const [forecastHour] = useState(createForecastHourStore);
+
+  // The heatmap of the routes on screen, fetched once per trip. Planning the same trip with
+  // another interval leaves the geometries, departure and load as they were: the same query,
+  // so the heatmap stays. It never holds the routes or the recommendation back.
+  const heatmapRequest = useMemo<HeatmapRequest | null>(
+    () =>
+      plan && submitted
+        ? {
+            geometries: plan.routes.map((route) => route.geometry),
+            departure: plan.departure,
+            load_weight_lb: submitted.load_weight_lb,
+          }
+        : null,
+    [plan, submitted],
+  );
+  const heatmap = useHeatmap(heatmapRequest);
+  const heatmapStatus: HeatmapStatus = heatmap.isError
+    ? 'error'
+    : heatmap.data
+      ? 'ready'
+      : 'loading';
 
   const planError = planTrip.error instanceof ApiError ? planTrip.error : null;
 
   function handlePlan(request: PlanRequest) {
     setSubmitted(request);
     setPlan(null);
+    forecastHour.set(0);
     planTrip.mutate(request, {
       onSuccess: (planned) => {
         setPlan(planned);
@@ -39,32 +67,45 @@ export default function App() {
   }
 
   return (
-    <AppShell
-      panel={
-        <PlannerPanel
-          origin={origin}
-          onOriginChange={setOrigin}
-          destination={destination}
-          onDestinationChange={setDestination}
-          onPlan={handlePlan}
-          isPlanning={planTrip.isPending}
-          planError={planError}
-          plan={plan}
-          selectedRouteId={selectedRouteId}
-          onSelectRoute={setSelectedRouteId}
-          onIntervalChange={handleIntervalChange}
-        />
-      }
-      map={
-        <MapView
-          origin={origin}
-          destination={destination}
-          routes={plan?.routes ?? []}
-          timeZone={plan?.origin_time_zone ?? null}
-          selectedRouteId={selectedRouteId}
-          onSelectRoute={setSelectedRouteId}
-        />
-      }
-    />
+    <ForecastHourContext.Provider value={forecastHour}>
+      <AppShell
+        panel={
+          <PlannerPanel
+            origin={origin}
+            onOriginChange={setOrigin}
+            destination={destination}
+            onDestinationChange={setDestination}
+            onPlan={handlePlan}
+            isPlanning={planTrip.isPending}
+            planError={planError}
+            plan={plan}
+            selectedRouteId={selectedRouteId}
+            onSelectRoute={setSelectedRouteId}
+            onIntervalChange={handleIntervalChange}
+          />
+        }
+        map={
+          <MapView
+            origin={origin}
+            destination={destination}
+            routes={plan?.routes ?? []}
+            heatmap={heatmap.data ?? null}
+            timeZone={plan?.origin_time_zone ?? null}
+            selectedRouteId={selectedRouteId}
+            onSelectRoute={setSelectedRouteId}
+            overlay={
+              plan ? (
+                <HeatmapControls
+                  status={heatmapStatus}
+                  departure={plan.departure}
+                  timeZone={plan.origin_time_zone}
+                  onRetry={() => void heatmap.refetch()}
+                />
+              ) : null
+            }
+          />
+        }
+      />
+    </ForecastHourContext.Provider>
   );
 }

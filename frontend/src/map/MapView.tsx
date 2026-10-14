@@ -1,4 +1,6 @@
-import { lazy, Suspense } from 'react';
+import { Box } from '@mui/material';
+import { lazy, type ReactNode, Suspense } from 'react';
+import type { Heatmap } from '../api/heatmap';
 import type { PlannedRoute } from '../api/plan';
 import type { Place } from '../api/places';
 import { MapPlaceholder } from './MapPlaceholder';
@@ -11,15 +13,21 @@ interface MapViewProps {
   origin: Place | null;
   destination: Place | null;
   routes: PlannedRoute[];
+  heatmap: Heatmap | null;
   timeZone: string | null;
   selectedRouteId: string | null;
   onSelectRoute: (id: string) => void;
+  /** Controls laid over the map, such as the forecast slider. */
+  overlay?: ReactNode;
 }
 
-export function MapView(props: MapViewProps) {
+export function MapView({ overlay, ...props }: MapViewProps) {
   return (
-    <Suspense fallback={<MapPlaceholder />}>
-      <TripMap {...props} />
-    </Suspense>
+    <Box sx={{ position: 'relative', width: '100%', height: '100%' }}>
+      <Suspense fallback={<MapPlaceholder />}>
+        <TripMap {...props} />
+      </Suspense>
+      {overlay}
+    </Box>
   );
 }
