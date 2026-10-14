@@ -1,16 +1,11 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useMap } from 'react-map-gl/maplibre';
 import type { Heatmap } from '../api/heatmap';
 import { useForecastHourStore } from '../heatmap/forecastHour';
+import { useHeatmapLayer } from '../heatmap/layer';
 import { useHeatmapBitmaps } from '../heatmap/useHeatmapBitmaps';
-import { HeatmapFader } from './heatmapFader';
-import {
-  createHeatmapLayers,
-  FIRST_FADE_IN_MS,
-  FRAME_FADE_MS,
-  HEATMAP_OPACITY,
-  layerAboveGround,
-} from './heatmapBitmapLayers';
+import { layerAboveGround } from './heatmapBitmapLayers';
+import { HeatmapPainter } from './heatmapPainter';
 import type { LayerStore } from './layerStore';
 
 interface HeatmapLayersProps {
@@ -21,48 +16,38 @@ interface HeatmapLayersProps {
 }
 
 /**
- * Draws the heatmap frame for the forecast hour, crossfading as the hour changes. Must sit
- * inside a `Map`; renders nothing.
- *
- * It follows the hour by subscribing to the store, not through React state: a slider tick
- * starts a short fade, and each animation frame of it only swaps two deck.gl layers. No
- * component re-renders and nothing is fetched or computed per tick: the bitmaps were all
- * built in a worker when the heatmap arrived.
+ * Draws the heatmap's layer on show (risk, wind, rain or snow) at the forecast hour. Must sit
+ * inside a `Map`; renders nothing. The painting itself is `HeatmapPainter`'s: this ties its
+ * life to the map and the heatmap, and hands it each layer's frames as they are ready.
  */
 export function HeatmapLayers({ heatmap, underlay }: HeatmapLayersProps) {
   const { current: map } = useMap();
   const hourStore = useForecastHourStore();
-  const drawn = useHeatmapBitmaps(heatmap);
+  const drawn = useHeatmapBitmaps(heatmap, useHeatmapLayer());
+  const painter = useRef<HeatmapPainter | null>(null);
+  const latest = useRef(drawn);
 
   useEffect(() => {
-    if (!drawn || !map) return;
-    const { bitmaps, bounds } = drawn;
-    const beforeId = layerAboveGround(map.getStyle()?.layers);
-    const fader = new HeatmapFader({
-      alpha: HEATMAP_OPACITY,
-      fadeMs: FRAME_FADE_MS,
-      fadeInMs: FIRST_FADE_IN_MS,
+    latest.current = drawn;
+    painter.current?.setFrames(drawn);
+  }, [drawn]);
+
+  // A new heatmap starts a new painter (the old one clears what it drew); the frames then
+  // arrive through the effect above.
+  useEffect(() => {
+    if (!heatmap || !map) return;
+    const instance = new HeatmapPainter({
+      hourStore,
+      underlay,
+      beforeId: layerAboveGround(map.getStyle()?.layers),
     });
-    let frame = 0;
-
-    const step = (now: number) => {
-      const animating = fader.advance(now);
-      underlay.set(createHeatmapLayers({ slots: fader.slots(), bounds, beforeId }));
-      frame = animating ? requestAnimationFrame(step) : 0;
-    };
-    const show = () => {
-      fader.show(bitmaps[hourStore.get()], performance.now());
-      if (!frame) frame = requestAnimationFrame(step);
-    };
-
-    show();
-    const unsubscribe = hourStore.subscribe(show);
+    instance.setFrames(latest.current);
+    painter.current = instance;
     return () => {
-      unsubscribe();
-      cancelAnimationFrame(frame);
-      underlay.set([]);
+      painter.current = null;
+      instance.dispose();
     };
-  }, [drawn, map, hourStore, underlay]);
+  }, [heatmap, map, hourStore, underlay]);
 
   return null;
 }

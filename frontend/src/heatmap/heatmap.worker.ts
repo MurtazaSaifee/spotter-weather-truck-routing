@@ -1,20 +1,17 @@
-import type { Heatmap } from '../api/heatmap';
-import { buildRiskFrames, type Bounds } from './frames';
+import { buildFrames, type Bounds, type FrameRequest } from './frames';
+import type { HeatmapLayer } from './layer';
 
-/** What the page sends: the heatmap's grid and its risk frames. */
-export type FrameRequest = Pick<Heatmap, 'grid' | 'indices'> & {
-  frames: Pick<Heatmap['frames'], 'risk'>;
-};
-
-/** What the worker answers: a bitmap per hour, and where to place them. */
+/** What the worker answers: a bitmap per hour of the layer asked for, and where to place them. */
 export interface FrameResponse {
+  layer: HeatmapLayer;
   bitmaps: ImageBitmap[];
   bounds: Bounds;
 }
 
 /**
- * Builds the heatmap's bitmaps off the main thread, so a 49-frame build never delays a
- * slider drag or a map pan. The bitmaps are transferred, not copied.
+ * Builds a layer's bitmaps off the main thread, so a 49-frame build never delays a slider drag
+ * or a map pan. The bitmaps are transferred, not copied. It holds nothing between requests:
+ * the page asks for a layer when it is first shown and keeps what comes back.
  */
 const scope = self as unknown as {
   addEventListener(type: 'message', listener: (event: MessageEvent<FrameRequest>) => void): void;
@@ -26,7 +23,7 @@ scope.addEventListener('message', (event) => {
 });
 
 async function respond(request: FrameRequest) {
-  const { width, height, bounds, frames } = buildRiskFrames(request);
+  const { width, height, bounds, frames } = buildFrames(request);
   const bitmaps = await Promise.all(
     frames.map((pixels) =>
       createImageBitmap(new ImageData(pixels as ImageDataArray, width, height), {
@@ -35,5 +32,5 @@ async function respond(request: FrameRequest) {
       }),
     ),
   );
-  scope.postMessage({ bitmaps, bounds }, bitmaps);
+  scope.postMessage({ layer: request.layer, bitmaps, bounds }, bitmaps);
 }

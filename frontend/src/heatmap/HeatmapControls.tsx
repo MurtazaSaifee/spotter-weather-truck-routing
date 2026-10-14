@@ -1,6 +1,16 @@
-import { Box, Button, CircularProgress, Slider, Typography } from '@mui/material';
+import {
+  Box,
+  Button,
+  CircularProgress,
+  Slider,
+  ToggleButton,
+  ToggleButtonGroup,
+  Typography,
+} from '@mui/material';
 import { MAX_FORECAST_HOUR, useForecastHour, useForecastHourStore } from './forecastHour';
 import { forecastLabel } from './forecastLabel';
+import { HeatmapLegend } from './HeatmapLegend';
+import { HEATMAP_LAYERS, type HeatmapLayer } from './layer';
 
 export type HeatmapStatus = 'loading' | 'ready' | 'error';
 
@@ -9,15 +19,24 @@ interface HeatmapControlsProps {
   /** The plan's departure (ISO-8601) and the origin's zone: the slider's clock times. */
   departure: string;
   timeZone: string;
+  layer: HeatmapLayer;
+  onLayerChange: (layer: HeatmapLayer) => void;
   onRetry: () => void;
 }
 
 /**
  * The forecast heatmap's control strip, under the map: "Checking forecasts…"
- * while the heatmap loads (the routes and recommendation never wait for it), the hour slider
- * once it is there, and a retry when it failed.
+ * while the heatmap loads (the routes and recommendation never wait for it), then the layer
+ * toggle with its legend and the hour slider, and a retry when it failed.
  */
-export function HeatmapControls({ status, departure, timeZone, onRetry }: HeatmapControlsProps) {
+export function HeatmapControls({
+  status,
+  departure,
+  timeZone,
+  layer,
+  onLayerChange,
+  onRetry,
+}: HeatmapControlsProps) {
   return (
     <Box
       sx={{
@@ -46,8 +65,53 @@ export function HeatmapControls({ status, departure, timeZone, onRetry }: Heatma
           </Button>
         </Box>
       )}
-      {status === 'ready' && <HourSlider departure={departure} timeZone={timeZone} />}
+      {status === 'ready' && (
+        <>
+          <Box
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              flexWrap: 'wrap',
+              columnGap: 2,
+              rowGap: 1,
+              mb: 0.5,
+            }}
+          >
+            <LayerToggle layer={layer} onChange={onLayerChange} />
+            <HeatmapLegend layer={layer} />
+          </Box>
+          <HourSlider departure={departure} timeZone={timeZone} />
+        </>
+      )}
     </Box>
+  );
+}
+
+function LayerToggle({
+  layer,
+  onChange,
+}: {
+  layer: HeatmapLayer;
+  onChange: (layer: HeatmapLayer) => void;
+}) {
+  return (
+    <ToggleButtonGroup
+      exclusive
+      size="small"
+      color="primary"
+      aria-label="Heatmap layer"
+      value={layer}
+      // Pressing the one in use deselects it: stay put instead.
+      onChange={(_, next: HeatmapLayer | null) => {
+        if (next !== null) onChange(next);
+      }}
+    >
+      {HEATMAP_LAYERS.map(({ layer: value, label }) => (
+        <ToggleButton key={value} value={value} sx={{ px: 1.5, py: 0.25 }}>
+          {label}
+        </ToggleButton>
+      ))}
+    </ToggleButtonGroup>
   );
 }
 
