@@ -63,14 +63,24 @@ class PlanView(APIView):
         summary="Plan a truck trip",
         description=(
             "Up to three truck routes between two North American places, with travel times "
-            "that account for the truck's weight and the traffic expected at departure."
+            "that account for the truck's weight and the traffic expected at departure, and "
+            "the forecast at every checkpoint for the hour the truck gets there."
         ),
         request=PlanRequestSerializer,
         responses={
             200: PlanSerializer,
             400: OpenApiResponse(ErrorSerializer, description="`validation_error`"),
             422: OpenApiResponse(ErrorSerializer, description="`no_route_found`"),
-            503: OpenApiResponse(ErrorSerializer, description="`routing_unavailable`"),
+            429: OpenApiResponse(
+                ErrorSerializer,
+                description=(
+                    "`weather_rate_limited`: the weather service is limiting requests. "
+                    "`details.retry_after_seconds` says how long to wait."
+                ),
+            ),
+            503: OpenApiResponse(
+                ErrorSerializer, description="`routing_unavailable` or `weather_unavailable`"
+            ),
         },
     )
     def post(self, request: Request) -> Response:

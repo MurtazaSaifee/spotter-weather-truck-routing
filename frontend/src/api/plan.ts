@@ -19,6 +19,18 @@ export interface PlanRequest {
 export const SAMPLING_INTERVALS = [10, 25, 50] as const;
 export type SamplingInterval = (typeof SAMPLING_INTERVALS)[number];
 
+/** The forecast for the hour a truck is at a checkpoint. */
+export interface CheckpointWeather {
+  /** Sustained wind at 10 m, in mph. */
+  wind_mph: number;
+  /** Strongest gust, in mph; null when the forecast has none. */
+  gust_mph: number | null;
+  /** Rain plus showers, in inches per hour. */
+  rain_in_hr: number;
+  /** Snowfall, in inches of snow per hour. */
+  snow_in_hr: number;
+}
+
 /** A sampled point on a route. */
 export interface Checkpoint {
   /** Miles from the origin along the route. */
@@ -29,6 +41,8 @@ export interface Checkpoint {
   eta: string;
   /** Miles of road this checkpoint stands for; a route's checkpoints add up to its length. */
   covered_miles: number;
+  /** The forecast for the hour the truck is here; null means No data. */
+  weather: CheckpointWeather | null;
 }
 
 export interface PlannedRoute {

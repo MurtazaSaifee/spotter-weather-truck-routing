@@ -7,17 +7,20 @@ place each:
 - the sampling interval is chosen from the shortest route, or taken from the driver;
 - ``_plan_route`` turns each route into what the response carries (per-route features such
   as checkpoints are added to ``PlannedRoute`` and filled in here);
+- the forecast for every route's checkpoints is loaded in one go, so places the routes share
+  are looked up once;
 - ``notices`` collects plan-level messages for the driver.
 """
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
-from . import places, routing
+from . import places, routing, weather
 from .checkpoints import METRES_PER_MILE, RouteProfile, automatic_interval
 from .geo import encode_polyline, simplify
 from .routing import Route, TripRequest
+from .weather import Conditions
 
 # The browser only draws the route, so 100 m of straightening is invisible on any map it
 # can show a whole trip on, and it cuts a route from ~10,000 vertices to a few hundred.
@@ -41,6 +44,8 @@ class PlannedCheckpoint:
     lng: float
     eta: datetime
     covered_miles: float
+    # The forecast for the hour the truck is here; ``None`` when there is none (No data).
+    weather: Conditions | None = None
 
 
 @dataclass
@@ -76,14 +81,33 @@ def plan_trip(trip: TripRequest, interval_miles: int | None = None) -> Plan:
     notices: list[Notice] = []
     if len(routes) < routing.MAX_ROUTES:
         notices.append(_fewer_routes_notice(len(routes)))
+    planned = [_plan_route(route, trip, time_zone, interval_miles) for route in routes]
     return Plan(
         origin_time_zone=str(time_zone),
         departure=trip.departure_minute.astimezone(time_zone),
         interval_miles=interval_miles,
         interval_automatic=automatic,
-        routes=[_plan_route(route, trip, time_zone, interval_miles) for route in routes],
+        routes=_with_weather(planned),
         notices=notices,
     )
+
+
+def _with_weather(routes: list[PlannedRoute]) -> list[PlannedRoute]:
+    """``routes`` with the forecast at each checkpoint, for the hour the truck is there."""
+    checkpoints = [checkpoint for route in routes for checkpoint in route.checkpoints]
+    forecast = weather.load_forecast(
+        points=[(checkpoint.lat, checkpoint.lng) for checkpoint in checkpoints],
+        times=[checkpoint.eta for checkpoint in checkpoints],
+    )
+
+    def forecast_at(checkpoint: PlannedCheckpoint) -> PlannedCheckpoint:
+        conditions = forecast.conditions_at((checkpoint.lat, checkpoint.lng), checkpoint.eta)
+        return replace(checkpoint, weather=conditions if conditions.complete else None)
+
+    return [
+        replace(route, checkpoints=[forecast_at(checkpoint) for checkpoint in route.checkpoints])
+        for route in routes
+    ]
 
 
 def _fewer_routes_notice(count: int) -> Notice:

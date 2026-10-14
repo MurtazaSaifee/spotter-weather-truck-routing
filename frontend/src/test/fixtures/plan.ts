@@ -10,16 +10,62 @@ const ELAPSED = [0, 20_000, 53_684];
  * answer has one every 25 mi to Dallas; a few are enough for the page to show.
  */
 const everyTwentyFiveMiles: Checkpoint[] = [
-  { mile: 0, lat: 41.88425, lng: -87.63245, eta: '2026-10-15T08:00:00-05:00', covered_miles: 12.5 },
-  { mile: 25, lat: 41.60912, lng: -87.96127, eta: '2026-10-15T08:31:12-05:00', covered_miles: 25 },
-  { mile: 50, lat: 41.45133, lng: -88.31544, eta: '2026-10-15T09:04:51-05:00', covered_miles: 25 },
+  {
+    mile: 0,
+    lat: 41.88425,
+    lng: -87.63245,
+    eta: '2026-10-15T08:00:00-05:00',
+    covered_miles: 12.5,
+    weather: { wind_mph: 12.4, gust_mph: 21.7, rain_in_hr: 0, snow_in_hr: 0 },
+  },
+  {
+    mile: 25,
+    lat: 41.60912,
+    lng: -87.96127,
+    eta: '2026-10-15T08:31:12-05:00',
+    covered_miles: 25,
+    weather: { wind_mph: 18.2, gust_mph: 29.6, rain_in_hr: 0.034, snow_in_hr: 0.5 },
+  },
+  {
+    mile: 50,
+    lat: 41.45133,
+    lng: -88.31544,
+    eta: '2026-10-15T09:04:51-05:00',
+    covered_miles: 25,
+    // Open-Meteo had no forecast for this hour.
+    weather: null,
+  },
 ];
+
+/** A forecast with every value but the gust. */
+const WITHOUT_GUSTS = { wind_mph: 9, gust_mph: null, rain_in_hr: 0, snow_in_hr: 0 };
 
 /** The same route sampled every 10 mi, after the driver asks for finer detail. */
 const everyTenMiles: Checkpoint[] = [
-  { mile: 0, lat: 41.88425, lng: -87.63245, eta: '2026-10-15T08:00:00-05:00', covered_miles: 5 },
-  { mile: 10, lat: 41.7421, lng: -87.80813, eta: '2026-10-15T08:12:40-05:00', covered_miles: 10 },
-  { mile: 20, lat: 41.63071, lng: -87.9442, eta: '2026-10-15T08:25:03-05:00', covered_miles: 10 },
+  {
+    mile: 0,
+    lat: 41.88425,
+    lng: -87.63245,
+    eta: '2026-10-15T08:00:00-05:00',
+    covered_miles: 5,
+    weather: WITHOUT_GUSTS,
+  },
+  {
+    mile: 10,
+    lat: 41.7421,
+    lng: -87.80813,
+    eta: '2026-10-15T08:12:40-05:00',
+    covered_miles: 10,
+    weather: WITHOUT_GUSTS,
+  },
+  {
+    mile: 20,
+    lat: 41.63071,
+    lng: -87.9442,
+    eta: '2026-10-15T08:25:03-05:00',
+    covered_miles: 10,
+    weather: WITHOUT_GUSTS,
+  },
 ];
 
 /** Values from the recorded HERE answer for Chicago to Dallas, in the shape the API returns. */
