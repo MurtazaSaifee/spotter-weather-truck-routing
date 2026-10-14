@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { useMap } from 'react-map-gl/maplibre';
 import type { PlannedRoute } from '../api/plan';
-import type { Insets } from './framing';
+import { reserveControls, type Insets } from './framing';
 import type { LayerStore } from './layerStore';
 import type { LngLat } from './polyline';
 import { ROLE_STYLES, routeRole, type RoutePath } from './routeLayers';
@@ -25,7 +25,7 @@ interface LabelPlacementProps {
   selectedRouteId: string | null;
   recommendedRouteId: string | null;
   onSelectRoute: (id: string) => void;
-  /** Parts of the map covered by the layout; labels stay clear of them. */
+  /** Parts of the map covered by the layout; labels stay clear of them and of the map controls. */
   insets?: Insets;
   /** Where the label layer goes; the map's overlay draws it above the routes and dots. */
   layers: LayerStore;
@@ -51,7 +51,8 @@ export function LabelPlacement({
   // Where the labels were last put, so that they stay put while that is still a good place.
   const previous = useRef<Record<string, LngLat>>({});
   // The insets arrive as an object that changes identity each render; its values are what count.
-  const { top = 0, right = 0, bottom = 0, left = 0 } = insets ?? {};
+  // Labels also keep clear of the column of map controls along the right edge.
+  const { top = 0, right = 0, bottom = 0, left = 0 } = reserveControls(insets);
 
   useEffect(() => {
     if (!map) return;

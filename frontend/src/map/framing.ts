@@ -1,4 +1,5 @@
 import type { CSSProperties } from 'react';
+import { TOUCH_TARGET } from '../theme';
 import type { LngLat } from './polyline';
 import type { RoutePath } from './routeLayers';
 
@@ -8,6 +9,12 @@ import type { RoutePath } from './routeLayers';
 const FIT_PADDING_RATIO = 0.12;
 // A pin stands 42 px above the point it marks, so the top needs at least that much room.
 const PIN_CLEARANCE_PX = 56;
+
+// MapLibre's controls (zoom, compass, attribution) sit in a column at the map's right edge,
+// set in by this margin (its own CSS). The buttons are touch-sized (see MapStyles).
+const CONTROL_MARGIN_PX = 10;
+/** Width of the column of map controls along the right edge, which nothing should sit under. */
+export const CONTROL_COLUMN_PX = TOUCH_TARGET + CONTROL_MARGIN_PX;
 
 /** Pixels at each edge of the map that something else covers, such as a bottom sheet. */
 export type Insets = Partial<Record<'top' | 'right' | 'bottom' | 'left', number>>;
@@ -20,12 +27,17 @@ export const CONTINENTAL_US: Bounds = [
   [-66.9, 49.5],
 ];
 
+/** `insets` plus the column of map controls on the right: what framing and labels keep clear of. */
+export function reserveControls(insets: Insets = {}): Insets {
+  return { ...insets, right: (insets.right ?? 0) + CONTROL_COLUMN_PX };
+}
+
 /**
  * The padding to hand `fitBounds` for a map of `width` x `height` pixels with `insets` covered:
- * the covered parts, plus a share of what is left, and room above for a pin.
+ * the covered parts and the map controls, plus a share of what is left, and room above for a pin.
  */
 export function fitPadding(width: number, height: number, insets: Insets = {}) {
-  const { top = 0, right = 0, bottom = 0, left = 0 } = insets;
+  const { top = 0, right = 0, bottom = 0, left = 0 } = reserveControls(insets);
   const x = Math.round(Math.max(0, width - left - right) * FIT_PADDING_RATIO);
   const y = Math.round(Math.max(0, height - top - bottom) * FIT_PADDING_RATIO);
   return {

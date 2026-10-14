@@ -1,15 +1,21 @@
 import { describe, expect, it } from 'vitest';
-import { boundsOfRoutes, fitPadding } from './framing';
+import { boundsOfRoutes, CONTROL_COLUMN_PX, fitPadding } from './framing';
 
 describe('the padding of a fit', () => {
   it('is a share of the map’s own size, so a narrow map is not swallowed by it', () => {
     const narrow = fitPadding(400, 700);
     const wide = fitPadding(1200, 700);
 
-    expect(narrow.left).toBe(48);
-    expect(narrow.right).toBe(48);
-    expect(wide.left).toBe(144);
+    // 12% of what is left once the column of controls is taken off.
+    expect(narrow.left).toBe(Math.round((400 - CONTROL_COLUMN_PX) * 0.12));
+    expect(wide.left).toBe(Math.round((1200 - CONTROL_COLUMN_PX) * 0.12));
     expect(narrow.bottom).toBe(84);
+  });
+
+  it('reserves the column of map controls on the right, on top of the share', () => {
+    const padding = fitPadding(400, 700);
+
+    expect(padding.right).toBe(padding.left + CONTROL_COLUMN_PX);
   });
 
   it('leaves room above for a pin even on a short map', () => {

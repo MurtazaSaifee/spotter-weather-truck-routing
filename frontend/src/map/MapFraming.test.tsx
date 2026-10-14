@@ -2,7 +2,12 @@ import { render } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Place } from '../api/places';
 import { MapFraming } from './MapFraming';
+import { TOUCH_TARGET } from '../theme';
 import { CONTINENTAL_US, type Bounds } from './framing';
+
+// MapLibre sets its control column in from the edge by this much (its own CSS margin).
+const CONTROL_MARGIN_PX = 10;
+const CONTROL_COLUMN_PX = TOUCH_TARGET + CONTROL_MARGIN_PX;
 
 interface FitOptions {
   padding: Record<'top' | 'right' | 'bottom' | 'left', number>;
@@ -144,5 +149,34 @@ describe('framing the map', () => {
     fake.emit('resize');
 
     expect(fake.map.fitBounds.mock.calls.length).toBe(before);
+  });
+
+  it('keeps clear of the map controls on the right, on a phone and on a desktop', () => {
+    for (const width of [375, 1200]) {
+      fake.size.width = width;
+      render(<MapFraming origin={chicago} destination={dallas} routes={routes} />);
+
+      expect(lastFit().padding.right).toBeGreaterThanOrEqual(CONTROL_COLUMN_PX);
+    }
+  });
+
+  it('keeps clear of the controls as well as the layout insets, and the controls alone', () => {
+    const { rerender } = render(
+      <MapFraming origin={chicago} destination={dallas} routes={routes} insets={{ right: 80 }} />,
+    );
+    expect(lastFit().padding.right).toBeGreaterThanOrEqual(80 + CONTROL_COLUMN_PX);
+
+    rerender(<MapFraming origin={null} destination={null} routes={[]} />);
+    expect(lastFit().padding.right).toBeGreaterThanOrEqual(CONTROL_COLUMN_PX);
+  });
+
+  it('does not give up much of a desktop map for the controls', () => {
+    fake.size.width = 1200;
+    fake.size.height = 800;
+    render(<MapFraming origin={chicago} destination={dallas} routes={routes} />);
+
+    const { padding } = lastFit();
+    // Without the controls the routes get 76% of the width; they keep nearly all of it.
+    expect(1200 - padding.left - padding.right).toBeGreaterThan(1200 * 0.7);
   });
 });
