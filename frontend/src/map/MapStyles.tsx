@@ -20,6 +20,7 @@ export function MapStyles() {
           top: 'var(--map-inset-top, 0px)',
         },
         '.maplibregl-ctrl.maplibregl-ctrl-attrib': {
+          boxSizing: 'border-box',
           backgroundColor: 'rgba(255, 255, 255, 0.94)',
           color: theme.palette.text.primary,
           fontFamily: theme.typography.fontFamily,
@@ -32,11 +33,11 @@ export function MapStyles() {
           color: theme.palette.primary.dark,
           textDecoration: 'underline',
         },
-        '.maplibregl-ctrl-attrib.maplibregl-compact': {
+        '.maplibregl-ctrl.maplibregl-ctrl-attrib.maplibregl-compact': {
           borderRadius: theme.shape.borderRadius,
           margin: 8,
         },
-        '.maplibregl-ctrl-attrib.maplibregl-compact-show': {
+        '.maplibregl-ctrl.maplibregl-ctrl-attrib.maplibregl-compact-show': {
           padding: '4px 36px 4px 10px',
           // On a narrow map the open credits are as wide as the map allows, and wrap.
           maxWidth: 'calc(100vw - 16px)',
@@ -45,8 +46,20 @@ export function MapStyles() {
           borderRadius: theme.shape.borderRadius,
         },
         '@media (pointer: coarse)': {
-          '.maplibregl-ctrl-attrib.maplibregl-compact': { minHeight: 44, minWidth: 44 },
-          '.maplibregl-ctrl-attrib-button': { width: 44, height: 44 },
+          '.maplibregl-ctrl.maplibregl-ctrl-attrib.maplibregl-compact:not(.maplibregl-compact-show)': {
+            boxSizing: 'border-box',
+            width: 44,
+            height: 44,
+            padding: 0,
+          },
+          '.maplibregl-ctrl.maplibregl-ctrl-attrib.maplibregl-compact-show': { padding: '4px 48px 4px 10px', minHeight: 44 },
+          '.maplibregl-ctrl-attrib.maplibregl-compact .maplibregl-ctrl-attrib-button': {
+            width: 44,
+            height: 44,
+            // The icon is drawn for a 24 px button: keep it one icon, centred in the bigger one.
+            backgroundRepeat: 'no-repeat',
+            backgroundPosition: 'center',
+          },
           '.maplibregl-ctrl-group button': { width: 44, height: 44 },
           '.maplibregl-popup-close-button': { width: 44, height: 44, fontSize: 24 },
         },
