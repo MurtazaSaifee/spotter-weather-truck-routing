@@ -7,6 +7,7 @@ to the minute and the weather it should read can be worked out by hand.
 
 import logging
 from datetime import UTC, datetime, timedelta
+from urllib.parse import parse_qs
 
 import httpx
 import pytest
@@ -182,17 +183,22 @@ def test_open_meteo_is_asked_by_form_post_for_the_five_variables_in_us_units(
 
     post_plan(client)
 
-    (call,) = open_meteo.route.calls
-    assert call.request.headers["content-type"] == "application/x-www-form-urlencoded"
-    (form,) = open_meteo.requests
-    assert form["hourly"] == ["wind_speed_10m,wind_gusts_10m,rain,showers,snowfall"]
-    assert form["wind_speed_unit"] == ["mph"]
-    assert form["precipitation_unit"] == ["inch"]
-    assert form["timezone"] == ["GMT"]
-    assert "models" not in form  # The default model.
-    # The same window whatever the trip needs: today (GMT) and the days after, 192 hours.
-    assert form["forecast_days"] == ["8"]
-    assert "start_date" not in form
+    # The checkpoints' request, and the heatmap's head start beside it: both are asked the same.
+    assert len(open_meteo.route.calls) == 2
+    for call in open_meteo.route.calls:
+        assert call.request.headers["content-type"] == "application/x-www-form-urlencoded"
+    for form in open_meteo.requests:
+        assert form["hourly"] == ["wind_speed_10m,wind_gusts_10m,rain,showers,snowfall"]
+        assert form["wind_speed_unit"] == ["mph"]
+        assert form["precipitation_unit"] == ["inch"]
+        assert form["timezone"] == ["GMT"]
+        assert "models" not in form  # The default model.
+        # The same window whatever the trip needs: today (GMT) and the days after, 192 hours.
+        assert form["forecast_days"] == ["8"]
+        assert "start_date" not in form
+
+
+CHECKPOINT_LATITUDES = ["40.00,40.35,40.70,41.10,41.45"]
 
 
 def test_each_checkpoint_is_looked_up_at_its_nearest_point_on_the_0_05_degree_lattice(
@@ -202,9 +208,8 @@ def test_each_checkpoint_is_looked_up_at_its_nearest_point_on_the_0_05_degree_la
 
     post_plan(client)
 
-    (form,) = open_meteo.requests
     # The five checkpoints are at 40.0, 40.3618, 40.7237, 41.0855 and 41.4473 N, all at 90.0 W.
-    assert form["latitude"] == ["40.00,40.35,40.70,41.10,41.45"]
+    (form,) = [form for form in open_meteo.requests if form["latitude"] == CHECKPOINT_LATITUDES]
     assert form["longitude"] == ["-90.00,-90.00,-90.00,-90.00,-90.00"]
 
 
@@ -401,3 +406,60 @@ def test_a_429_without_retry_after_waits_for_the_next_full_minute(
 
     assert response.status_code == 429
     assert response.json()["details"] == {"retry_after_seconds": 40}
+
+
+# --- The heatmap's head start ------------------------------------------------------------
+
+
+def lattice_points_requested(open_meteo):
+    return [
+        point
+        for form in open_meteo.requests
+        for point in zip(
+            form["latitude"][0].split(","), form["longitude"][0].split(","), strict=True
+        )
+    ]
+
+
+def test_the_heatmap_of_a_plan_finds_its_weather_already_loaded(client, outbound_http, open_meteo):
+    hundred_mile_route(outbound_http)
+    geometries = [route["geometry"] for route in post_plan(client).json()["routes"]]
+    requests = len(open_meteo.requests)
+    open_meteo.route.side_effect = httpx.ConnectError("down")
+
+    heatmap = client.post(
+        "/api/heatmap",
+        {"geometries": geometries, "departure": DEPARTURE, "load_weight_lb": 30_000},
+        content_type="application/json",
+    )
+
+    assert heatmap.status_code == 200
+    assert len(open_meteo.requests) == requests
+
+
+def test_no_place_is_asked_for_twice_while_planning(client, outbound_http, open_meteo):
+    hundred_mile_route(outbound_http)
+
+    post_plan(client)
+
+    asked = lattice_points_requested(open_meteo)
+    assert len(asked) == len(set(asked))
+
+
+def test_a_plan_is_not_held_back_by_a_heatmap_head_start_that_fails(
+    client, outbound_http, open_meteo
+):
+    hundred_mile_route(outbound_http)
+    answer = open_meteo.route.side_effect
+
+    def fail_for_the_corridor(request):
+        if len(parse_qs(request.content.decode())["latitude"][0].split(",")) > 5:
+            return httpx.Response(429, headers={"Retry-After": "60"})
+        return answer(request)
+
+    open_meteo.route.side_effect = fail_for_the_corridor
+
+    response = post_plan(client)
+
+    assert response.status_code == 200
+    assert all(weather is not None for weather in weather_of(response))

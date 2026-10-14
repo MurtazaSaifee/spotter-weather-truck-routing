@@ -8,19 +8,22 @@ place each:
 - ``_plan_route`` turns each route into what the response carries (per-route features such
   as checkpoints are added to ``PlannedRoute`` and filled in here);
 - the forecast for every route's checkpoints is loaded in one go, so places the routes share
-  are looked up once;
+  are looked up once. The forecast the heatmap will need is loaded beside it (see
+  ``_warm_heatmap``);
 - the routes are assessed from their checkpoints' risk and ranked (``risk.rank_routes``), which
   gives the recommendation;
 - ``notices`` collects plan-level messages for the driver.
 """
 
+import logging
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field, replace
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
-from . import places, risk, routing, weather
+from . import heatmap, places, risk, routing, weather
 from .checkpoints import METRES_PER_MILE, RouteProfile, automatic_interval
-from .geo import encode_polyline, simplify
+from .geo import Point, decode_polyline, encode_polyline, simplify
 from .risk import (
     Classification,
     RankedRoute,
@@ -31,6 +34,8 @@ from .risk import (
 )
 from .routing import Route, TripRequest
 from .weather import Conditions
+
+logger = logging.getLogger(__name__)
 
 # The browser only draws the route, so 100 m of straightening is invisible on any map it
 # can show a whole trip on, and it cuts a route from ~10,000 vertices to a few hundred.
@@ -101,7 +106,9 @@ def plan_trip(trip: TripRequest, interval_miles: int | None = None) -> Plan:
     if len(routes) < routing.MAX_ROUTES:
         notices.append(_fewer_routes_notice(len(routes)))
     planned = [_plan_route(route, trip, time_zone, interval_miles) for route in routes]
-    ranked_routes, ranking = _ranked(_with_weather(planned, trip.load_weight_lb))
+    ranked_routes, ranking = _ranked(
+        _with_weather(planned, trip.load_weight_lb, trip.departure_minute)
+    )
     if no_data := _no_data_notice(ranked_routes):
         notices.append(no_data)
     return Plan(
@@ -116,14 +123,19 @@ def plan_trip(trip: TripRequest, interval_miles: int | None = None) -> Plan:
     )
 
 
-def _with_weather(routes: list[PlannedRoute], load_weight_lb: int) -> list[PlannedRoute]:
+def _with_weather(
+    routes: list[PlannedRoute], load_weight_lb: int, departure: datetime
+) -> list[PlannedRoute]:
     """``routes`` with the forecast at each checkpoint, for the hour the truck is there, and
     the risk that forecast means for a truck carrying ``load_weight_lb``."""
     checkpoints = [checkpoint for route in routes for checkpoint in route.checkpoints]
-    forecast = weather.load_forecast(
-        points=[(checkpoint.lat, checkpoint.lng) for checkpoint in checkpoints],
-        times=[checkpoint.eta for checkpoint in checkpoints],
-    )
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        # Leaving the block waits for the warm-up, so it is done before the response goes out.
+        points = [(checkpoint.lat, checkpoint.lng) for checkpoint in checkpoints]
+        pool.submit(_warm_heatmap, [route.geometry for route in routes], departure, points)
+        forecast = weather.load_forecast(
+            points=points, times=[checkpoint.eta for checkpoint in checkpoints]
+        )
 
     def forecast_at(checkpoint: PlannedCheckpoint) -> PlannedCheckpoint:
         conditions = forecast.conditions_at((checkpoint.lat, checkpoint.lng), checkpoint.eta)
@@ -144,6 +156,24 @@ def _with_weather(routes: list[PlannedRoute], load_weight_lb: int) -> list[Plann
         replace(route, checkpoints=[forecast_at(checkpoint) for checkpoint in route.checkpoints])
         for route in routes
     ]
+
+
+def _warm_heatmap(geometries: list[str], departure: datetime, checkpoints: list[Point]) -> None:
+    """Load the forecast of the heatmap the browser will ask for once it has this plan.
+
+    The heatmap is built from the routes' geometries, which are the plan's, so its corridor is
+    known here. Fetching its weather (but for the checkpoints' points, which the plan loads
+    itself) in a second request, made while the first is under way, leaves the heatmap with
+    nothing to wait for but the cache. It has to be done inside the request: a Cloud Run
+    instance gets no CPU once it has responded. A failure here costs the heatmap its head
+    start and nothing more, so it is only logged.
+    """
+    try:
+        routes: list[list[Point]] = [decode_polyline(geometry) for geometry in geometries]
+        heatmap.warm_forecast(routes, departure, loading_elsewhere=checkpoints)
+    except Exception as error:
+        # Not the exception itself: see the provider adapters, which keep URLs out of logs.
+        logger.warning("Heatmap warm-up failed (%s)", type(error).__name__)
 
 
 def _ranked(routes: list[PlannedRoute]) -> tuple[list[PlannedRoute], Ranking]:
