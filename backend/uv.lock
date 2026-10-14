@@ -484,6 +484,7 @@ dependencies = [
 [package.dev-dependencies]
 dev = [
     { name = "fakeredis" },
+    { name = "jsonschema" },
     { name = "pytest" },
     { name = "pytest-django" },
     { name = "respx" },
@@ -507,6 +508,7 @@ requires-dist = [
 [package.metadata.requires-dev]
 dev = [
     { name = "fakeredis", specifier = ">=2.40.0" },
+    { name = "jsonschema", specifier = ">=4.26.0" },
     { name = "pytest", specifier = ">=9.1.1" },
     { name = "pytest-django", specifier = ">=4.14.0" },
     { name = "respx", specifier = ">=0.23.1" },

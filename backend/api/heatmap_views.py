@@ -3,7 +3,7 @@
 from datetime import datetime
 from typing import ClassVar
 
-from drf_spectacular.utils import OpenApiResponse, extend_schema, extend_schema_field
+from drf_spectacular.utils import extend_schema, extend_schema_field
 from rest_framework import serializers
 from rest_framework.request import Request
 from rest_framework.response import Response
@@ -12,10 +12,16 @@ from rest_framework.views import APIView
 from . import heatmap
 from .geo import Point, decode_polyline
 from .ratelimit import HeatmapRateLimit
+from .schema_examples import (
+    HEATMAP_400,
+    HEATMAP_503,
+    HEATMAP_OK,
+    HEATMAP_REQUEST,
+    RATE_LIMIT_429,
+)
 from .serializers import (
     NORTH_AMERICA_LAT,
     NORTH_AMERICA_LNG,
-    ErrorSerializer,
     LoadWeightField,
     OffsetDateTimeField,
     check_departure_window,
@@ -139,21 +145,15 @@ class HeatmapView(APIView):
             "up to 25 miles either side of the given routes. Built only from the geometries "
             "sent: the routing provider is never asked. Returned as a regular grid with the "
             "indices of the points inside the corridor, and one list of whole numbers per "
-            "variable per hour."
+            "variable per hour. Limited to 60 requests per visitor per hour."
         ),
         request=HeatmapRequestSerializer,
+        examples=[HEATMAP_REQUEST, HEATMAP_OK],
         responses={
             200: HeatmapSerializer,
-            400: OpenApiResponse(ErrorSerializer, description="`validation_error`"),
-            429: OpenApiResponse(
-                ErrorSerializer,
-                description=(
-                    "`weather_rate_limited` (the weather service is limiting requests) or "
-                    "`rate_limit_exceeded` (this visitor's hourly allowance is used up). "
-                    "`details.retry_after_seconds` says how long to wait."
-                ),
-            ),
-            503: OpenApiResponse(ErrorSerializer, description="`weather_unavailable`"),
+            400: HEATMAP_400,
+            429: RATE_LIMIT_429,
+            503: HEATMAP_503,
         },
     )
     def post(self, request: Request) -> Response:
