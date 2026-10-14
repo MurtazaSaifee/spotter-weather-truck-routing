@@ -188,7 +188,8 @@ def test_changing_the_interval_succeeds_with_here_unreachable(client, here, outb
 
 
 def test_checkpoints_sit_at_the_origin_every_interval_and_the_destination(client, here):
-    route = plan(client)["routes"][0]
+    # Routes are fastest first; the 926.83 mi route is the second.
+    route = plan(client)["routes"][1]
 
     # 926.83 mi at 25 mi: mile 0, 25 ... 925, then the destination.
     expected = [*range(0, 926, 25), 926.83]
@@ -242,7 +243,7 @@ def test_the_first_and_last_checkpoints_are_the_origin_and_the_destination(clien
         first, last = route["checkpoints"][0], route["checkpoints"][-1]
         assert first["mile"] == 0
         assert (first["lat"], first["lng"]) == pytest.approx((41.88, -87.63), abs=0.05)
-        assert last["mile"] == pytest.approx(route["distance_miles"], abs=0.001)
+        assert last["mile"] == pytest.approx(route["distance_miles"], abs=0.01)  # rounded to 0.01
         assert (last["lat"], last["lng"]) == pytest.approx((32.78, -96.80), abs=0.05)
 
 
@@ -272,6 +273,8 @@ def test_etas_are_in_the_origin_time_zone_and_end_at_the_arrival(client, here):
 
 def test_a_slow_span_delays_every_later_checkpoint(client, outbound_http, load_fixture):
     payload = load_fixture("routing/here_chicago_dallas_truck.json")
+    # One route, so slowing it down can not change which route comes first.
+    payload["routes"] = payload["routes"][:1]
     baseline_route = plan_with(client, outbound_http, payload)["routes"][0]
 
     # An hour of standstill in the span that is around the middle of the first route.

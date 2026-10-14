@@ -5,14 +5,16 @@ response, and caches them per trip. The steps are kept separate so later feature
 without rewriting each other:
 
 - ``_request_routes`` talks to HERE and parses its answer;
-- ``_select_routes`` chooses which of HERE's alternatives to keep (the seam for
-  near-duplicate removal and the detour fallback);
-- ``find_routes`` caches the selected routes under ``TripRequest.cache_key``.
+- ``_add_distinct`` chooses which routes to keep: fastest first, skipping near-duplicates;
+- ``_request_detours`` asks HERE for routes through via-points when its own alternatives
+  were not distinct enough;
+- ``find_routes`` caches the final routes under ``TripRequest.cache_key``.
 """
 
 import functools
 import logging
-from collections.abc import Sequence
+from collections.abc import Iterable, Sequence
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, replace
 from datetime import UTC, datetime
 from typing import Any
@@ -23,7 +25,14 @@ from django.conf import settings
 from django.core.cache import cache
 
 from .errors import ApiError
-from .geo import Point
+from .geo import (
+    Point,
+    RouteIndex,
+    bearing_deg,
+    move,
+    point_along,
+    sample_along,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -37,6 +46,16 @@ HERE_ALTERNATIVES = 6
 HERE_SPANS = "dynamicSpeedInfo,length,duration"
 
 MAX_ROUTES = 3
+
+# Two routes are near-duplicates when this share of the shorter route's samples (one every
+# mile) lies within the radius of the other.
+SAMPLE_STEP_M = 1609.344
+NEAR_DUPLICATE_RADIUS_M = 500
+NEAR_DUPLICATE_SHARE = 0.9
+
+# Detour via-points: these fractions of the trip's length, to either side of its midpoint.
+DETOUR_OFFSETS = (0.1, 0.2)
+HERE_DETOUR_TIMEOUT = httpx.Timeout(10.0, connect=5.0)
 
 # Weight HERE needs is the whole vehicle's. The driver enters the load; the empty
 # tractor-trailer is an assumption (a typical Class 8 tractor with a 53 ft dry van).
@@ -133,55 +152,131 @@ def gross_weight_kg(load_weight_lb: float) -> int:
 
 
 def find_routes(trip: TripRequest) -> list[Route]:
-    """Up to ``MAX_ROUTES`` truck routes for ``trip``, numbered ``route-1``, ``route-2``…
+    """Up to ``MAX_ROUTES`` distinct truck routes for ``trip``, fastest first, numbered
+    ``route-1``, ``route-2``…
+
+    HERE's alternatives are used when three of them are distinct. Otherwise detours through
+    via-points are tried to make up the number, so there can be fewer than three routes.
 
     Raises ``NoRouteFoundError`` when HERE finds none and ``RoutingUnavailableError`` when
-    HERE fails. Answers are cached for ``ROUTE_CACHE_SECONDS``.
+    HERE fails. The final routes are cached for ``ROUTE_CACHE_SECONDS``, detours included.
     """
     key = trip.cache_key()
     cached: list[Route] | None = cache.get(key)
     if cached is not None:
         return cached
 
-    routes = _select_routes(_request_routes(trip))
+    alternatives = _request_routes(trip)
+    if not alternatives:
+        raise NoRouteFoundError()
+    footprints = _Footprints()
+    routes = _add_distinct([], alternatives, footprints)
+    if len(routes) < MAX_ROUTES:
+        routes = _add_distinct(routes, _request_detours(trip, routes[0]), footprints)
+    routes.sort(key=lambda route: route.duration_s)
     routes = [replace(route, id=f"route-{number}") for number, route in enumerate(routes, 1)]
     cache.set(key, routes, ROUTE_CACHE_SECONDS)
     return routes
 
 
-def _select_routes(candidates: Sequence[Route]) -> list[Route]:
-    """The routes to offer the driver, from HERE's alternatives (fastest first)."""
-    return list(candidates[:MAX_ROUTES])
+def _add_distinct(
+    kept: Sequence[Route], candidates: Iterable[Route], footprints: "_Footprints"
+) -> list[Route]:
+    """``kept`` plus the fastest candidates that are not near-duplicates of a route already
+    kept, up to ``MAX_ROUTES`` in all."""
+    routes = list(kept)
+    for candidate in sorted(candidates, key=lambda route: route.duration_s):
+        if len(routes) == MAX_ROUTES:
+            break
+        if not any(footprints.near_duplicates(candidate, route) for route in routes):
+            routes.append(candidate)
+    return routes
 
 
-def _request_routes(trip: TripRequest) -> list[Route]:
+class _Footprints:
+    """Compares routes' shapes. Samples and spatial indexes are built once per route."""
+
+    def __init__(self) -> None:
+        self._samples: dict[int, list[Point]] = {}
+        self._indexes: dict[int, RouteIndex] = {}
+
+    def near_duplicates(self, a: Route, b: Route) -> bool:
+        shorter, longer = (a, b) if a.distance_m <= b.distance_m else (b, a)
+        index = self._index(longer)
+        samples = self._sample(shorter)
+        near = sum(index.is_near(point) for point in samples)
+        return near >= NEAR_DUPLICATE_SHARE * len(samples)
+
+    def _sample(self, route: Route) -> list[Point]:
+        if id(route) not in self._samples:
+            self._samples[id(route)] = sample_along(route.points, SAMPLE_STEP_M)
+        return self._samples[id(route)]
+
+    def _index(self, route: Route) -> RouteIndex:
+        if id(route) not in self._indexes:
+            self._indexes[id(route)] = RouteIndex(route.points, NEAR_DUPLICATE_RADIUS_M)
+        return self._indexes[id(route)]
+
+
+def _request_detours(trip: TripRequest, fastest: Route) -> list[Route]:
+    """Routes through each detour via-point, asked for in parallel. A via-point HERE can't
+    route through (one in water, say) is dropped."""
+    vias = _detour_via_points(trip, fastest)
+    with ThreadPoolExecutor(max_workers=len(vias)) as pool:
+        answers = pool.map(lambda via: _request_detour(trip, via), vias)
+    return [route for answer in answers for route in answer]
+
+
+def _detour_via_points(trip: TripRequest, fastest: Route) -> list[Point]:
+    """Points at right angles to the direction of travel, through the middle of the fastest
+    route, ``DETOUR_OFFSETS`` of the trip's length away on either side."""
+    middle = point_along(fastest.points, fastest.distance_m / 2)
+    heading = bearing_deg(trip.origin, trip.destination)
+    return [
+        move(middle, (heading + turn) % 360, fraction * fastest.distance_m)
+        for fraction in DETOUR_OFFSETS
+        for turn in (-90, 90)
+    ]
+
+
+def _request_detour(trip: TripRequest, via: Point) -> list[Route]:
+    try:
+        return _request_routes(trip, via=via)
+    except RoutingUnavailableError:
+        return []
+
+
+def _request_routes(trip: TripRequest, via: Point | None = None) -> list[Route]:
+    """HERE's routes for the trip (its alternatives, or one route through ``via``), possibly
+    none."""
+    params = {
+        "transportMode": "truck",
+        "origin": _coordinate(trip.origin),
+        "destination": _coordinate(trip.destination),
+        "departureTime": trip.departure_minute.strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "alternatives": HERE_ALTERNATIVES if via is None else 0,
+        "return": "polyline,summary",
+        "spans": HERE_SPANS,
+        "vehicle[grossWeight]": gross_weight_kg(trip.load_weight_lb),
+        "apiKey": settings.HERE_API_KEY,
+    }
+    if via is not None:
+        # Pass-through: the route goes by the point without stopping, so it keeps one section.
+        params["via"] = f"{_coordinate(via)}!passThrough=true"
     try:
         response = httpx.get(
             HERE_ROUTING_URL,
-            params={
-                "transportMode": "truck",
-                "origin": _coordinate(trip.origin),
-                "destination": _coordinate(trip.destination),
-                "departureTime": trip.departure_minute.strftime("%Y-%m-%dT%H:%M:%SZ"),
-                "alternatives": HERE_ALTERNATIVES,
-                "return": "polyline,summary",
-                "spans": HERE_SPANS,
-                "vehicle[grossWeight]": gross_weight_kg(trip.load_weight_lb),
-                "apiKey": settings.HERE_API_KEY,
-            },
-            timeout=HERE_ROUTING_TIMEOUT,
+            params=params,
+            timeout=HERE_ROUTING_TIMEOUT if via is None else HERE_DETOUR_TIMEOUT,
         )
         response.raise_for_status()
         items: list[dict[str, Any]] = response.json()["routes"]
-        routes = [_parse_route(item) for item in items]
+        return [_parse_route(item) for item in items]
     except _PROVIDER_ERRORS as error:
         # Never log the exception itself: httpx puts the request URL, and with it the
         # HERE key, in its message.
         logger.error("HERE routing failed (%s)", _describe(error))
         raise RoutingUnavailableError() from None
-    if not routes:
-        raise NoRouteFoundError()
-    return routes
 
 
 def _describe(error: Exception) -> str:

@@ -74,6 +74,8 @@ def plan_trip(trip: TripRequest, interval_miles: int | None = None) -> Plan:
     if interval_miles is None:
         interval_miles = automatic_interval(min(route.distance_m for route in routes))
     notices: list[Notice] = []
+    if len(routes) < routing.MAX_ROUTES:
+        notices.append(_fewer_routes_notice(len(routes)))
     return Plan(
         origin_time_zone=str(time_zone),
         departure=trip.departure_minute.astimezone(time_zone),
@@ -81,6 +83,15 @@ def plan_trip(trip: TripRequest, interval_miles: int | None = None) -> Plan:
         interval_automatic=automatic,
         routes=[_plan_route(route, trip, time_zone, interval_miles) for route in routes],
         notices=notices,
+    )
+
+
+def _fewer_routes_notice(count: int) -> Notice:
+    noun = "route" if count == 1 else "routes"
+    verb = "exists" if count == 1 else "exist"
+    return Notice(
+        code="fewer_than_three_routes",
+        message=f"Only {count} distinct {noun} {verb} between these places, not three.",
     )
 
 
