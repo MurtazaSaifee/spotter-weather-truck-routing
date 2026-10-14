@@ -6,7 +6,7 @@ from django.utils import timezone
 from rest_framework import serializers
 
 from .checkpoints import INTERVAL_CHOICES
-from .risk import CONDITIONS, Level
+from .risk import CONDITIONS, Criterion, Level
 from .routing import TripRequest
 
 # A box around the US, Canada and Mexico, as (south, north) and (west, east). It also takes in a
@@ -251,6 +251,51 @@ class CheckpointSerializer(serializers.Serializer):
     risk = RiskSerializer(help_text="How risky the forecast is for this load.")
 
 
+class RiskMilesSerializer(serializers.Serializer):
+    """Miles of the route at each risk level: its checkpoints' covered miles, summed."""
+
+    low = RoundedFloatField(1, source="low_miles")
+    moderate = RoundedFloatField(1, source="moderate_miles")
+    high = RoundedFloatField(1, source="high_miles")
+    severe = RoundedFloatField(1, source="severe_miles")
+    no_travel = RoundedFloatField(1, source="no_travel_miles")
+    unassessed = RoundedFloatField(
+        1,
+        source="unassessed_miles",
+        help_text="Miles of the checkpoints with No data. Not counted at any level.",
+    )
+
+
+class DecidingSerializer(serializers.Serializer):
+    """Why the recommended route beat this one: the criterion and both values."""
+
+    criterion = serializers.ChoiceField(
+        choices=[criterion.value for criterion in Criterion],
+        help_text=(
+            "The first criterion that separated them: `blocked` (this route has a No Travel "
+            "checkpoint), `severe_miles`, `high_miles`, `average_risk` or `travel_time`."
+        ),
+    )
+    recommended_value = serializers.FloatField(
+        allow_null=True,
+        help_text=(
+            "The recommended route's value: miles (to 0.1) for `blocked`, `severe_miles` and "
+            "`high_miles` (No Travel miles for `blocked`), the average risk, or seconds."
+        ),
+    )
+    alternative_value = serializers.FloatField(
+        allow_null=True, help_text="This route's value, in the same unit. Null for no average risk."
+    )
+    best_average_risk = RoundedFloatField(
+        2,
+        allow_null=True,
+        help_text=(
+            "For `average_risk` only: the lowest average risk of the routes still in the "
+            "running, which the 0.25 tolerance is measured from."
+        ),
+    )
+
+
 class PlannedRouteSerializer(serializers.Serializer):
     id = serializers.CharField(help_text="Stable within this plan, e.g. `route-1`.")
     distance_miles = serializers.FloatField()
@@ -268,6 +313,32 @@ class PlannedRouteSerializer(serializers.Serializer):
         help_text="Seconds after departure at each vertex of `geometry`, one per vertex.",
     )
     checkpoints = CheckpointSerializer(many=True, help_text="From the origin to the destination.")
+    risk_miles = RiskMilesSerializer(source="assessment")
+    average_risk = RoundedFloatField(
+        2,
+        source="assessment.average_risk",
+        allow_null=True,
+        help_text=(
+            "The mean of the checkpoints' risk scores, weighted by the miles each covers. "
+            "No data checkpoints are left out; null when none has data."
+        ),
+    )
+    blocked = serializers.BooleanField(
+        source="ranked.blocked",
+        help_text="True when any checkpoint is No Travel. A blocked route is never recommended.",
+    )
+    rank = serializers.IntegerField(
+        source="ranked.rank",
+        help_text="1 is best. Eligible routes come before blocked ones.",
+    )
+    deciding = DecidingSerializer(
+        source="ranked.deciding",
+        allow_null=True,
+        help_text=(
+            "Why the recommended route beat this one. Null for the recommended route itself "
+            "and when nothing is recommended."
+        ),
+    )
 
 
 class PlanSerializer(serializers.Serializer):
@@ -279,7 +350,22 @@ class PlanSerializer(serializers.Serializer):
     interval_automatic = serializers.BooleanField(
         help_text="True when the interval was chosen from the trip's length, not by the driver."
     )
-    routes = PlannedRouteSerializer(many=True, help_text="Up to three, fastest first.")
+    routes = PlannedRouteSerializer(
+        many=True,
+        help_text=(
+            "Up to three, fastest first (their ids follow that order). `rank` orders them by risk."
+        ),
+    )
+    recommended_route_id = serializers.CharField(
+        allow_null=True,
+        help_text="The route to take. Null when every route is blocked by No Travel.",
+    )
+    all_blocked_warning = NoticeSerializer(
+        allow_null=True,
+        help_text=(
+            'Set when every route is blocked: the "Do not travel at this departure time" warning.'
+        ),
+    )
     notices = NoticeSerializer(many=True)
 
 
