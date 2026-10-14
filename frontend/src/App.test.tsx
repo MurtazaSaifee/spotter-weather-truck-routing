@@ -1,17 +1,12 @@
-import { QueryClient } from '@tanstack/react-query';
-import { render, screen } from '@testing-library/react';
+import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { describe, expect, it, vi } from 'vitest';
-import App from './App';
-import { AppProviders } from './AppProviders';
+import { renderApp } from './test/renderApp';
 import { server } from './test/server';
 
-// The only mock in the suite: WebGL is unavailable in jsdom and the real canvas
-// is verified manually. The stub mirrors the accessible name MapLibre gives its canvas.
-vi.mock('./map/TripMap', () => ({
-  default: () => <div role="region" aria-label="Map" />,
-}));
+// The only mock in the suite: WebGL is unavailable in jsdom.
+vi.mock('./map/TripMap', () => import('./test/tripMapStub'));
 
 const API_ERROR_MESSAGE = 'Something went wrong on our side. Please try again.';
 
@@ -23,17 +18,6 @@ function failHealthCheck() {
         { status: 503 },
       ),
     ),
-  );
-}
-
-function renderApp() {
-  const queryClient = new QueryClient({
-    defaultOptions: { queries: { retry: false } },
-  });
-  return render(
-    <AppProviders queryClient={queryClient}>
-      <App />
-    </AppProviders>,
   );
 }
 
