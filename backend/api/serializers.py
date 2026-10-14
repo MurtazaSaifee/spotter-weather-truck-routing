@@ -135,6 +135,23 @@ class RoundedFloatField(serializers.FloatField):
         return round(super().to_representation(value), self.places)
 
 
+class WeatherSerializer(serializers.Serializer):
+    wind_mph = RoundedFloatField(
+        1, help_text="Sustained wind at 10 m, at the hour nearest the ETA."
+    )
+    gust_mph = RoundedFloatField(
+        1,
+        allow_null=True,
+        help_text="Strongest gust in the hour around the ETA. Null when the forecast has none.",
+    )
+    rain_in_hr = RoundedFloatField(
+        3, help_text="Rain rate (rain plus showers) in the hour around the ETA, inches per hour."
+    )
+    snow_in_hr = RoundedFloatField(
+        3, help_text="Snowfall rate in the hour around the ETA, inches of snow per hour."
+    )
+
+
 class CheckpointSerializer(serializers.Serializer):
     mile = RoundedFloatField(3, help_text="Miles from the origin along the route.")
     lat = RoundedFloatField(5)
@@ -148,6 +165,13 @@ class CheckpointSerializer(serializers.Serializer):
             "Miles of road this checkpoint stands for: half the gap to each neighbour. The "
             "first and last cover only their inner half. A route's checkpoints add up to its "
             "length."
+        ),
+    )
+    weather = WeatherSerializer(
+        allow_null=True,
+        help_text=(
+            "The forecast for the hour the truck is here. Null means No data: there is no "
+            "forecast for the sustained wind, rain or snow at that hour or the one beside it."
         ),
     )
 

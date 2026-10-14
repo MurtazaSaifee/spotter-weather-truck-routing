@@ -64,7 +64,14 @@ if REDIS_URL:
         }
     }
 else:
-    CACHES = {"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}}
+    # In-process memory keeps 300 entries by default and then evicts a third of them; one
+    # heatmap alone is 500 weather entries.
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+            "OPTIONS": {"MAX_ENTRIES": 10_000},
+        }
+    }
 
 LANGUAGE_CODE = "en-us"
 TIME_ZONE = "UTC"
