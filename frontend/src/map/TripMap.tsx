@@ -6,7 +6,9 @@ import {
   Map,
   NavigationControl,
 } from 'react-map-gl/maplibre';
+import type { Place } from '../api/places';
 import { DeckGLOverlay } from './DeckGLOverlay';
+import { PlacePins } from './PlacePins';
 
 // MapLibre 6 guesses its worker as a sibling file of its own module URL, which
 // Vite breaks (dev pre-bundling moves the module; build hashes it into a chunk).
@@ -19,7 +21,12 @@ const MAP_STYLE = 'https://tiles.openfreemap.org/styles/positron';
 // Continental US.
 const INITIAL_VIEW_STATE = { longitude: -98.5, latitude: 39.5, zoom: 3.6 };
 
-export default function TripMap() {
+interface TripMapProps {
+  origin: Place | null;
+  destination: Place | null;
+}
+
+export default function TripMap({ origin, destination }: TripMapProps) {
   return (
     <Map
       mapLib={maplibregl}
@@ -31,6 +38,7 @@ export default function TripMap() {
       {/* The style's TileJSON already credits OpenFreeMap, OpenMapTiles and OSM. */}
       <AttributionControl position="bottom-right" compact={false} />
       <NavigationControl position="top-right" />
+      <PlacePins origin={origin} destination={destination} />
       <DeckGLOverlay layers={[]} />
     </Map>
   );
