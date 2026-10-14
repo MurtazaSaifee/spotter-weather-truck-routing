@@ -219,3 +219,87 @@ describe('forecast at a checkpoint', () => {
     expect(details).not.toHaveTextContent('Wind no data');
   });
 });
+
+describe('risk at a checkpoint', () => {
+  async function planAndOpen(user: UserEvent, mile: number, every: 10 | 25 = 25) {
+    await planTrip(user);
+    if (every === 10) {
+      await user.click(interval(10));
+      await vi.waitFor(() => expect(interval(10)).toHaveAttribute('aria-pressed', 'true'));
+    }
+    await user.click(screen.getByRole('button', { name: `Route 1 checkpoint at mile ${mile}` }));
+    return screen.getByRole('tooltip');
+  }
+
+  it('labels a Low checkpoint Low, with nothing driving it', async () => {
+    answerPlans();
+    const user = userEvent.setup();
+    renderApp();
+
+    const details = await planAndOpen(user, 0);
+
+    expect(details).toHaveTextContent('Risk: Low');
+    expect(details).not.toHaveTextContent('Driven by');
+    expect(details).not.toHaveTextContent('Combined');
+    expect(details).not.toHaveTextContent('Gusts alone');
+  });
+
+  it('names the condition that drove the level', async () => {
+    answerPlans();
+    const user = userEvent.setup();
+    renderApp();
+
+    const details = await planAndOpen(user, 25);
+
+    expect(details).toHaveTextContent('Risk: Moderate');
+    expect(details).toHaveTextContent('Driven by snow');
+    expect(details).toHaveTextContent('Snowfall rate 0.5 in/hr · Moderate');
+    expect(details).toHaveTextContent('Wind 18.2 mph · Low');
+    expect(details).not.toHaveTextContent('Combined');
+  });
+
+  it('says No data rather than Low when there is no forecast', async () => {
+    answerPlans();
+    const user = userEvent.setup();
+    renderApp();
+
+    const details = await planAndOpen(user, 50);
+
+    expect(details).toHaveTextContent('Risk: No data');
+    expect(details).not.toHaveTextContent('Low');
+  });
+
+  it('shows combined conditions, the load rule and the gust warning', async () => {
+    answerPlans();
+    const user = userEvent.setup();
+    renderApp();
+
+    const details = await planAndOpen(user, 20, 10);
+
+    expect(details).toHaveTextContent('Risk: Severe');
+    expect(details).toHaveTextContent('Driven by wind');
+    expect(details).toHaveTextContent('Raised by the load weight');
+    expect(details).toHaveTextContent('Combined conditions: wind + snow');
+    expect(details).toHaveTextContent('Gusts alone: 52 mph would be No Travel');
+  });
+});
+
+describe('risk legend', () => {
+  it('explains every risk level, including No data, beside the routes', async () => {
+    answerPlans();
+    const user = userEvent.setup();
+    renderApp();
+    await planTrip(user);
+
+    const legend = screen.getByRole('region', { name: 'Risk legend' });
+
+    expect(within(legend).getAllByRole('listitem').map((item) => item.textContent)).toEqual([
+      'Low',
+      'Moderate',
+      'High',
+      'Severe',
+      'No Travel',
+      'No data',
+    ]);
+  });
+});

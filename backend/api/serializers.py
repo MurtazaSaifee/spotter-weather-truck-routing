@@ -6,6 +6,7 @@ from django.utils import timezone
 from rest_framework import serializers
 
 from .checkpoints import INTERVAL_CHOICES
+from .risk import CONDITIONS, Level
 from .routing import TripRequest
 
 # A box around the US, Canada and Mexico, as (south, north) and (west, east). It also takes in a
@@ -152,6 +153,79 @@ class WeatherSerializer(serializers.Serializer):
     )
 
 
+LEVEL_CODES = [level.name.lower() for level in Level]
+NO_DATA = "no_data"
+LEVEL_CODES_OR_NO_DATA = [*LEVEL_CODES, NO_DATA]
+CONDITION_NAMES = list(CONDITIONS)
+
+
+class LevelField(serializers.ChoiceField):
+    """A risk level written as its code, `low` to `no_travel`."""
+
+    def __init__(self, **kwargs) -> None:
+        super().__init__(choices=LEVEL_CODES, **kwargs)
+
+    def to_representation(self, value: Level) -> str:
+        return value.name.lower()
+
+
+class ConditionLevelsSerializer(serializers.Serializer):
+    wind = LevelField(allow_null=True, help_text="After the load rules. Null when missing.")
+    rain = LevelField(allow_null=True, help_text="Null when missing.")
+    snow = LevelField(allow_null=True, help_text="Null when missing.")
+
+
+class GustWarningSerializer(serializers.Serializer):
+    gust_mph = RoundedFloatField(1)
+    level = LevelField(help_text="What the gust would be classed as: High or worse.")
+
+
+class RiskSerializer(serializers.Serializer):
+    level = serializers.ChoiceField(
+        choices=LEVEL_CODES_OR_NO_DATA,
+        help_text=(
+            "The worst of wind (after the load rules), rain and snow. `no_data` when the "
+            "forecast lacks sustained wind, rain or snow: never treated as `low`."
+        ),
+    )
+    score = RoundedFloatField(
+        1,
+        allow_null=True,
+        help_text=(
+            "Low 0, Moderate 1, High 2, Severe 3, No Travel 4, plus 0.5 when conditions are "
+            "combined. Null for No data."
+        ),
+    )
+    conditions = ConditionLevelsSerializer()
+    driving = serializers.ListField(
+        child=serializers.ChoiceField(choices=CONDITION_NAMES),
+        help_text=("The condition(s) at the overall level. Empty for a Low or No data checkpoint."),
+    )
+    combined = serializers.ListField(
+        child=serializers.ChoiceField(choices=CONDITION_NAMES),
+        help_text=(
+            "When two or more conditions are Moderate or worse, their names, e.g. "
+            '`["wind", "snow"]`; otherwise empty.'
+        ),
+    )
+    gust_warning = GustWarningSerializer(
+        allow_null=True,
+        help_text=(
+            "Present when gusts alone would be High or worse, above what the sustained wind "
+            "gives. Informational: it never changes the level or the score."
+        ),
+    )
+    wind_raised_by_load = serializers.BooleanField(
+        help_text="True when the load rules put the wind in a higher band than the wind table."
+    )
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        # No data is a missing level (``None``), which DRF would write as null.
+        data["level"] = NO_DATA if instance.level is None else instance.level.name.lower()
+        return data
+
+
 class CheckpointSerializer(serializers.Serializer):
     mile = RoundedFloatField(3, help_text="Miles from the origin along the route.")
     lat = RoundedFloatField(5)
@@ -174,6 +248,7 @@ class CheckpointSerializer(serializers.Serializer):
             "forecast for the sustained wind, rain or snow at that hour or the one beside it."
         ),
     )
+    risk = RiskSerializer(help_text="How risky the forecast is for this load.")
 
 
 class PlannedRouteSerializer(serializers.Serializer):

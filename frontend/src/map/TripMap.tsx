@@ -72,7 +72,7 @@ export default function TripMap({
   const otherColor = theme.palette.grey[500];
   const layers = [
     ...createRouteLayers({ paths, selectedRouteId, onSelectRoute, selectedColor, otherColor }),
-    ...createCheckpointLayers({ dots, selectedRouteId, selectedColor, otherColor }),
+    ...createCheckpointLayers({ dots, selectedRouteId }),
   ];
 
   return (

@@ -1,6 +1,7 @@
 import { Alert, CircularProgress, Stack, Typography } from '@mui/material';
 import type { ApiError } from '../api/client';
 import type { Plan, SamplingInterval } from '../api/plan';
+import { RiskLegend } from '../risk/RiskLegend';
 import { IntervalToggle } from './IntervalToggle';
 import { PlanNotices } from './PlanNotices';
 import { RouteCard } from './RouteCard';
@@ -69,6 +70,7 @@ export function PlanResults({
           />
         ))}
       </Stack>
+      <RiskLegend />
     </Stack>
   );
 }

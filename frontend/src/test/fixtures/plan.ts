@@ -1,9 +1,54 @@
-import type { Checkpoint, Plan, PlannedRoute } from '../../api/plan';
+import type { Checkpoint, CheckpointRisk, Plan, PlannedRoute } from '../../api/plan';
 
 // Any valid encoded polyline will do: page tests never draw it.
 const GEOMETRY = '_p~iF~ps|U_ulLnnqC_mqNvxq`@';
 // One value per vertex of the geometry above: three vertices.
 const ELAPSED = [0, 20_000, 53_684];
+
+/** Nothing to worry about. */
+const LOW: CheckpointRisk = {
+  level: 'low',
+  score: 0,
+  conditions: { wind: 'low', rain: 'low', snow: 'low' },
+  driving: [],
+  combined: [],
+  gust_warning: null,
+  wind_raised_by_load: false,
+};
+
+/** Snow at 0.5 in/hr is Moderate, and nothing else is. */
+const MODERATE_SNOW: CheckpointRisk = {
+  ...LOW,
+  level: 'moderate',
+  score: 1,
+  conditions: { wind: 'low', rain: 'low', snow: 'moderate' },
+  driving: ['snow'],
+};
+
+/** No forecast: not Low. */
+const NO_DATA: CheckpointRisk = {
+  level: 'no_data',
+  score: null,
+  conditions: { wind: null, rain: null, snow: null },
+  driving: [],
+  combined: [],
+  gust_warning: null,
+  wind_raised_by_load: false,
+};
+
+/**
+ * Wind of 39 mph is High, and Severe for the 42,000 lb load the page tests plan with; snow is
+ * Moderate, so the two combine; gusts of 52 mph would be No Travel for that load.
+ */
+const SEVERE_WIND_AND_SNOW: CheckpointRisk = {
+  level: 'severe',
+  score: 3.5,
+  conditions: { wind: 'severe', rain: 'low', snow: 'moderate' },
+  driving: ['wind'],
+  combined: ['wind', 'snow'],
+  gust_warning: { gust_mph: 52, level: 'no_travel' },
+  wind_raised_by_load: true,
+};
 
 /**
  * The first checkpoints of a route that leaves Chicago at 08:00 CDT, every 25 mi. The real
@@ -17,6 +62,7 @@ const everyTwentyFiveMiles: Checkpoint[] = [
     eta: '2026-10-15T08:00:00-05:00',
     covered_miles: 12.5,
     weather: { wind_mph: 12.4, gust_mph: 21.7, rain_in_hr: 0, snow_in_hr: 0 },
+    risk: LOW,
   },
   {
     mile: 25,
@@ -25,6 +71,7 @@ const everyTwentyFiveMiles: Checkpoint[] = [
     eta: '2026-10-15T08:31:12-05:00',
     covered_miles: 25,
     weather: { wind_mph: 18.2, gust_mph: 29.6, rain_in_hr: 0.034, snow_in_hr: 0.5 },
+    risk: MODERATE_SNOW,
   },
   {
     mile: 50,
@@ -34,6 +81,7 @@ const everyTwentyFiveMiles: Checkpoint[] = [
     covered_miles: 25,
     // Open-Meteo had no forecast for this hour.
     weather: null,
+    risk: NO_DATA,
   },
 ];
 
@@ -49,6 +97,7 @@ const everyTenMiles: Checkpoint[] = [
     eta: '2026-10-15T08:00:00-05:00',
     covered_miles: 5,
     weather: WITHOUT_GUSTS,
+    risk: LOW,
   },
   {
     mile: 10,
@@ -57,6 +106,7 @@ const everyTenMiles: Checkpoint[] = [
     eta: '2026-10-15T08:12:40-05:00',
     covered_miles: 10,
     weather: WITHOUT_GUSTS,
+    risk: LOW,
   },
   {
     mile: 20,
@@ -64,7 +114,8 @@ const everyTenMiles: Checkpoint[] = [
     lng: -87.9442,
     eta: '2026-10-15T08:25:03-05:00',
     covered_miles: 10,
-    weather: WITHOUT_GUSTS,
+    weather: { wind_mph: 39, gust_mph: 52, rain_in_hr: 0, snow_in_hr: 0.6 },
+    risk: SEVERE_WIND_AND_SNOW,
   },
 ];
 

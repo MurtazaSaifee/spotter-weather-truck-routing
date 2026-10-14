@@ -16,9 +16,10 @@ from dataclasses import dataclass, field, replace
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
-from . import places, routing, weather
+from . import places, risk, routing, weather
 from .checkpoints import METRES_PER_MILE, RouteProfile, automatic_interval
 from .geo import encode_polyline, simplify
+from .risk import Classification
 from .routing import Route, TripRequest
 from .weather import Conditions
 
@@ -46,6 +47,8 @@ class PlannedCheckpoint:
     covered_miles: float
     # The forecast for the hour the truck is here; ``None`` when there is none (No data).
     weather: Conditions | None = None
+    # How risky that forecast is for the load; filled in with the forecast.
+    risk: Classification | None = None
 
 
 @dataclass
@@ -87,13 +90,14 @@ def plan_trip(trip: TripRequest, interval_miles: int | None = None) -> Plan:
         departure=trip.departure_minute.astimezone(time_zone),
         interval_miles=interval_miles,
         interval_automatic=automatic,
-        routes=_with_weather(planned),
+        routes=_with_weather(planned, trip.load_weight_lb),
         notices=notices,
     )
 
 
-def _with_weather(routes: list[PlannedRoute]) -> list[PlannedRoute]:
-    """``routes`` with the forecast at each checkpoint, for the hour the truck is there."""
+def _with_weather(routes: list[PlannedRoute], load_weight_lb: int) -> list[PlannedRoute]:
+    """``routes`` with the forecast at each checkpoint, for the hour the truck is there, and
+    the risk that forecast means for a truck carrying ``load_weight_lb``."""
     checkpoints = [checkpoint for route in routes for checkpoint in route.checkpoints]
     forecast = weather.load_forecast(
         points=[(checkpoint.lat, checkpoint.lng) for checkpoint in checkpoints],
@@ -102,7 +106,18 @@ def _with_weather(routes: list[PlannedRoute]) -> list[PlannedRoute]:
 
     def forecast_at(checkpoint: PlannedCheckpoint) -> PlannedCheckpoint:
         conditions = forecast.conditions_at((checkpoint.lat, checkpoint.lng), checkpoint.eta)
-        return replace(checkpoint, weather=conditions if conditions.complete else None)
+        classification = risk.classify(
+            wind_mph=conditions.wind_mph,
+            gust_mph=conditions.gust_mph,
+            rain_in_hr=conditions.rain_in_hr,
+            snow_in_hr=conditions.snow_in_hr,
+            load_lb=load_weight_lb,
+        )
+        return replace(
+            checkpoint,
+            weather=conditions if conditions.complete else None,
+            risk=classification,
+        )
 
     return [
         replace(route, checkpoints=[forecast_at(checkpoint) for checkpoint in route.checkpoints])

@@ -2,6 +2,7 @@ import type { PickingInfo } from '@deck.gl/core';
 import { ScatterplotLayer } from '@deck.gl/layers';
 import type { Checkpoint, PlannedRoute } from '../api/plan';
 import type { LngLat } from './polyline';
+import { riskStyle } from '../risk/palette';
 import { rgb } from './routeLayers';
 
 /** One checkpoint, ready to draw and to describe when the driver points at it. */
@@ -15,6 +16,8 @@ export interface CheckpointDot {
 const SELECTED_RADIUS_PX = 6;
 const OTHER_RADIUS_PX = 4.5;
 const OUTLINE_PX = 2;
+
+const riskColor = ({ risk }: Checkpoint) => rgb(riskStyle(risk.level).color);
 
 const SELECTED_LAYER_ID = 'selected-checkpoints';
 const OTHER_LAYER_ID = 'checkpoints';
@@ -40,24 +43,16 @@ export function dotAt(info: PickingInfo): CheckpointDot | null {
 interface CheckpointLayerOptions {
   dots: CheckpointDot[];
   selectedRouteId: string | null;
-  /** `#rrggbb` colours, matching the route lines. */
-  selectedColor: string;
-  otherColor: string;
 }
 
-/** Dots on the routes: the selected route's on top and a little larger. */
-export function createCheckpointLayers({
-  dots,
-  selectedRouteId,
-  selectedColor,
-  otherColor,
-}: CheckpointLayerOptions) {
-  const layer = (id: string, data: CheckpointDot[], color: string, radius: number) =>
+/** Dots on the routes, coloured by risk level: the selected route's on top and a little larger. */
+export function createCheckpointLayers({ dots, selectedRouteId }: CheckpointLayerOptions) {
+  const layer = (id: string, data: CheckpointDot[], radius: number) =>
     new ScatterplotLayer<CheckpointDot>({
       id,
       data,
       getPosition: (dot) => dot.position,
-      getFillColor: rgb(color),
+      getFillColor: (dot) => riskColor(dot.checkpoint),
       getLineColor: [255, 255, 255],
       getRadius: radius,
       radiusUnits: 'pixels',
@@ -71,13 +66,11 @@ export function createCheckpointLayers({
     layer(
       OTHER_LAYER_ID,
       dots.filter((dot) => dot.routeId !== selectedRouteId),
-      otherColor,
       OTHER_RADIUS_PX,
     ),
     layer(
       SELECTED_LAYER_ID,
       dots.filter((dot) => dot.routeId === selectedRouteId),
-      selectedColor,
       SELECTED_RADIUS_PX,
     ),
   ];
