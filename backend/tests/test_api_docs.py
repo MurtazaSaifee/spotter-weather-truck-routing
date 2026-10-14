@@ -126,18 +126,39 @@ def test_success_examples_fit_the_published_response_schema(client, path, method
         validator.validate(example)
 
 
-@pytest.mark.parametrize("path", ["/api/plan", "/api/heatmap"])
+REQUEST_PATHS = ["/api/plan", "/api/heatmap"]
+
+
+@pytest.mark.parametrize("path", REQUEST_PATHS)
 def test_request_examples_are_accepted_by_the_endpoint(client, outbound_http, path):
-    schema = client.get("/api/schema?format=json").json()
-    media = schema["paths"][path]["post"]["requestBody"]["content"]["application/json"]
-    (example,) = _example_values({"application/json": media})
     outbound_http.get("https://router.hereapi.com/v8/routes").respond(500)
 
     with time_machine.travel(datetime(2026, 10, 15, 12, 0, tzinfo=UTC), tick=False):
+        schema = client.get("/api/schema?format=json").json()
+        media = schema["paths"][path]["post"]["requestBody"]["content"]["application/json"]
+        (example,) = _example_values({"application/json": media})
         response = client.post(path, example, content_type="application/json")
 
     # Valid input gets past validation: the plan then fails on the blocked provider.
     assert response.status_code in {200, 503}, response.json()
+
+
+@pytest.mark.parametrize(
+    ("now", "departure"),
+    [
+        (datetime(2026, 10, 15, 12, 20, tzinfo=UTC), "2026-10-15T14:00:00+00:00"),
+        (datetime(2027, 3, 2, 23, 59, tzinfo=UTC), "2027-03-03T01:00:00+00:00"),
+    ],
+)
+@pytest.mark.parametrize("path", REQUEST_PATHS)
+def test_request_examples_depart_an_hour_after_the_next_full_hour(client, path, now, departure):
+    """The example in Swagger UI is ready to Try it out, whenever the docs are opened."""
+    with time_machine.travel(now, tick=False):
+        schema = client.get("/api/schema?format=json").json()
+
+    media = schema["paths"][path]["post"]["requestBody"]["content"]["application/json"]
+    (example,) = _example_values({"application/json": media})
+    assert example["departure"] == departure
 
 
 def test_error_examples_cover_every_code_the_api_raises(client):

@@ -147,8 +147,6 @@ Every error has the same body, `{"code", "message", "details"?}`:
 | 429 | `weather_rate_limited` | Open-Meteo is limiting requests. `details.retry_after_seconds`. |
 | 503 | `routing_unavailable`, `weather_unavailable`, `places_unavailable` | A provider failed or timed out. Failures are never cached. |
 
-To try the plan endpoint in Swagger UI, change the example's `departure` to a time within the next 48 hours.
-
 ### Rate limits
 
 Each visitor may make 60 plan, 60 heatmap and 300 suggestion requests per clock hour. These protect the free-tier provider quotas. Details:
