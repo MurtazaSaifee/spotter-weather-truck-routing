@@ -13,6 +13,13 @@ const NETWORK_ERROR_CODE = 'network_error';
 const NETWORK_ERROR_MESSAGE =
   "We couldn't reach the server. Check your connection and try again.";
 
+/** The error codes of a 429 that clears by itself: the weather service's or our own limit. */
+const RATE_LIMIT_CODES = ['weather_rate_limited', 'rate_limit_exceeded'];
+
+/** A wait longer than this (an hourly limit with most of the hour to run) is not worth a
+ * countdown: the message says so and the driver decides. */
+export const MAX_AUTOMATIC_RETRY_SECONDS = 120;
+
 export class ApiError extends Error {
   readonly code: string;
   readonly status: number;
@@ -24,6 +31,24 @@ export class ApiError extends Error {
     this.code = code;
     this.status = status;
     this.details = details;
+  }
+
+  /**
+   * How long to wait before the same request is likely to work, when a rate limit said so and
+   * it is short enough to wait for; otherwise null.
+   */
+  get retryAfterSeconds(): number | null {
+    const seconds = this.details?.retry_after_seconds;
+    if (
+      this.status !== 429 ||
+      !RATE_LIMIT_CODES.includes(this.code) ||
+      typeof seconds !== 'number' ||
+      !(seconds > 0) ||
+      seconds > MAX_AUTOMATIC_RETRY_SECONDS
+    ) {
+      return null;
+    }
+    return Math.ceil(seconds);
   }
 }
 

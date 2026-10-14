@@ -1,6 +1,7 @@
 import { Button, CircularProgress, Paper, Stack, Typography } from '@mui/material';
 import { createSvgIcon } from '@mui/material/utils';
 import { useHealth } from '../api/health';
+import { WakingUpNotice } from './WakingUpNotice';
 
 // Material "check_circle" and "error" glyphs, inlined to avoid pulling in the
 // whole icon package for two shapes.
@@ -53,6 +54,8 @@ export function HealthStatus() {
           </Button>
         )}
       </Stack>
+      {/* The page's first request: a sleeping server answers it slowly. */}
+      {isChecking && <WakingUpNotice />}
     </Paper>
   );
 }
