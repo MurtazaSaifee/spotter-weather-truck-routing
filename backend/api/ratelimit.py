@@ -44,10 +44,14 @@ IPV6_PREFIX_BITS = 64
 class RateLimitExceededError(ApiError):
     status_code = 429
     code = "rate_limit_exceeded"
-    message = "You've made a lot of requests. Please wait a little before trying again."
 
     def __init__(self, retry_after_seconds: int):
-        super().__init__(details={"retry_after_seconds": retry_after_seconds})
+        minutes = math.ceil(retry_after_seconds / 60)
+        wait = "a minute" if minutes <= 1 else f"about {minutes} minutes"
+        super().__init__(
+            f"You've made a lot of requests. Please try again in {wait}.",
+            details={"retry_after_seconds": retry_after_seconds},
+        )
 
 
 def client_ip(request: Request) -> str:

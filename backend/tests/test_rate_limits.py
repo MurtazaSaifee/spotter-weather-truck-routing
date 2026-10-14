@@ -80,7 +80,7 @@ def test_exceeding_a_limit_gives_the_code_and_the_seconds_until_it_resets(client
     assert response.status_code == 429
     body = response.json()
     assert body["code"] == "rate_limit_exceeded"
-    assert body["message"]
+    assert body["message"] == "You've made a lot of requests. Please try again in about 40 minutes."
     # 15:20 into the hour 15:00-16:00.
     assert body["details"] == {"retry_after_seconds": 40 * 60}
 
