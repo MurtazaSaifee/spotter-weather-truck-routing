@@ -6,6 +6,8 @@ import {
   CASING_EXTRA_PX,
   OTHER_WIDTH_PX,
   RECOMMENDED_WIDTH_PX,
+  ROLE_STYLES,
+  routeRole,
   SELECTED_WIDTH_PX,
   type RoutePath,
 } from './routeLayers';
@@ -135,5 +137,27 @@ describe('route layers', () => {
 
     expect(all.filter((layer) => isCasing(layer)).every((layer) => (layer.props.data as unknown[]).length === 0)).toBe(true);
     expect(drawn(all, 'route-1').alpha).toBe(255);
+  });
+});
+
+describe('route roles', () => {
+  const selection = { selectedRouteId: 'a', recommendedRouteId: 'b' };
+
+  it.each([
+    ['a', false, 'selected'],
+    ['a', true, 'selected'],
+    ['b', false, 'recommended'],
+    ['c', true, 'blocked'],
+    ['c', false, 'other'],
+  ] as const)('give route %s (blocked: %s) the role %s', (id, blocked, role) => {
+    expect(routeRole(id, blocked, selection)).toBe(role);
+  });
+
+  it('give the route that is selected and recommended both its look', () => {
+    const role = routeRole('a', false, { selectedRouteId: 'a', recommendedRouteId: 'a' });
+
+    expect(role).toBe('selectedRecommended');
+    expect(ROLE_STYLES[role].width).toBe(RECOMMENDED_WIDTH_PX);
+    expect(ROLE_STYLES[role].colour).toBe('selected');
   });
 });

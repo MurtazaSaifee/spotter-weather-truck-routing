@@ -4,13 +4,12 @@ import type { PlannedRoute } from '../api/plan';
 import type { Insets } from './framing';
 import type { LayerStore } from './layerStore';
 import type { LngLat } from './polyline';
-import type { RoutePath } from './routeLayers';
+import { ROLE_STYLES, routeRole, type RoutePath } from './routeLayers';
 import {
   createRouteLabelLayer,
   labelSize,
   placeLabels,
   routeLabelText,
-  type LabelTone,
   type RouteLabel,
 } from './routeLabels';
 
@@ -69,22 +68,14 @@ export function LabelPlacement({
           }),
         ]),
       );
-      const toneOf = (route: PlannedRoute): LabelTone =>
-        route.id === selectedRouteId
-          ? 'selected'
-          : route.id === recommendedRouteId
-            ? 'recommended'
-            : route.blocked
-              ? 'blocked'
-              : 'plain';
-      const priorityOf = (route: PlannedRoute) =>
-        route.id === selectedRouteId ? 3 : route.id === recommendedRouteId ? 2 : route.blocked ? 0 : 1;
+      const styleOf = (route: PlannedRoute) =>
+        ROLE_STYLES[routeRole(route.id, route.blocked, { selectedRouteId, recommendedRouteId })];
 
       const anchors = placeLabels(
         routes.flatMap((route) => {
           const path = paths.find(({ id }) => id === route.id)?.path;
           return path
-            ? [{ id: route.id, path, size: labelSize(texts.get(route.id)!), priority: priorityOf(route) }]
+            ? [{ id: route.id, path, size: labelSize(texts.get(route.id)!), priority: styleOf(route).labelPriority }]
             : [];
         }),
         {
@@ -107,7 +98,7 @@ export function LabelPlacement({
                 routeId: route.id,
                 text: texts.get(route.id)!,
                 position: anchors[route.id],
-                tone: toneOf(route),
+                tone: styleOf(route).tone,
               },
             ]
           : [],
