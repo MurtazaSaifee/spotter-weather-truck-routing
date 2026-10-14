@@ -150,5 +150,10 @@ def _photon_label(properties: dict[str, Any]) -> str:
     return ", ".join(label)
 
 
+def time_zone_at(lat: float, lng: float) -> str:
+    """The IANA time zone at a point, resolved offline."""
+    return get_tz(lng, lat)
+
+
 def _place(label: str, lat: float, lng: float) -> Place:
-    return Place(label=label, lat=lat, lng=lng, time_zone=get_tz(lng, lat))
+    return Place(label=label, lat=lat, lng=lng, time_zone=time_zone_at(lat, lng))
