@@ -69,6 +69,39 @@ export interface Checkpoint {
   risk: CheckpointRisk;
 }
 
+/** Miles of a route at each risk level: its checkpoints' covered miles, summed. */
+export interface RiskMiles {
+  low: number;
+  moderate: number;
+  high: number;
+  severe: number;
+  no_travel: number;
+  /** Miles of the checkpoints with No data; not counted at any level. */
+  unassessed: number;
+}
+
+/** What separated the recommended route from another one. */
+export type DecidingCriterion =
+  | 'blocked'
+  | 'severe_miles'
+  | 'high_miles'
+  | 'average_risk'
+  | 'travel_time';
+
+/** Why the recommended route beat one alternative, with both values. */
+export interface Deciding {
+  criterion: DecidingCriterion;
+  /**
+   * The recommended route's value: miles for `blocked` (No Travel miles), `severe_miles` and
+   * `high_miles`; the average risk; or seconds of travel time.
+   */
+  recommended_value: number | null;
+  /** The alternative's value in the same unit; null when it has no average risk. */
+  alternative_value: number | null;
+  /** For `average_risk` only: the lowest average risk still in the running. */
+  best_average_risk: number | null;
+}
+
 export interface PlannedRoute {
   /** Stable within a plan, e.g. `route-1`. */
   id: string;
@@ -83,6 +116,15 @@ export interface PlannedRoute {
   elapsed_seconds: number[];
   /** From the origin to the destination. */
   checkpoints: Checkpoint[];
+  risk_miles: RiskMiles;
+  /** Covered-miles-weighted mean of the checkpoint scores; null when no checkpoint has data. */
+  average_risk: number | null;
+  /** Any checkpoint is No Travel: the route is never recommended. */
+  blocked: boolean;
+  /** 1 is best; eligible routes come before blocked ones. */
+  rank: number;
+  /** Why the recommended route beat this one; null for the recommended route itself. */
+  deciding: Deciding | null;
 }
 
 /** A plan-level message for the driver. */
@@ -99,7 +141,12 @@ export interface Plan {
   interval_miles: SamplingInterval;
   /** True when the server chose the interval from the trip's length. */
   interval_automatic: boolean;
+  /** In the order of their ids (fastest first); `rank` orders them by risk. */
   routes: PlannedRoute[];
+  /** The route to take; null when every route is blocked. */
+  recommended_route_id: string | null;
+  /** Set when every route is blocked: "Do not travel at this departure time". */
+  all_blocked_warning: Notice | null;
   notices: Notice[];
 }
 

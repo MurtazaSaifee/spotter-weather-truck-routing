@@ -170,8 +170,8 @@ def _ranked(routes: list[PlannedRoute]) -> tuple[list[PlannedRoute], Ranking]:
 _ALL_BLOCKED_WARNING = Notice(
     code="all_routes_blocked",
     message=(
-        "Do not travel at this departure time: every route passes through No Travel "
-        "conditions. Try another departure time."
+        "Do not travel at this departure time. Every route passes through No Travel "
+        "conditions; try another departure time."
     ),
 )
 

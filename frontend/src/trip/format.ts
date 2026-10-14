@@ -6,6 +6,11 @@ export function formatMilesExact(miles: number): string {
   return miles.toLocaleString('en-US', { maximumFractionDigits: 1 });
 }
 
+/** An average risk score to two decimals: `0.45`, or `n/a` for a route with nothing assessed. */
+export function formatAverageRisk(score: number | null): string {
+  return score === null ? 'n/a' : score.toFixed(2);
+}
+
 export function formatMiles(miles: number): string {
   return `${Math.round(miles).toLocaleString('en-US')} mi`;
 }

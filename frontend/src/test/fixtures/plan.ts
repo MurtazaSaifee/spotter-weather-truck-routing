@@ -119,7 +119,13 @@ const everyTenMiles: Checkpoint[] = [
   },
 ];
 
-/** Values from the recorded HERE answer for Chicago to Dallas, in the shape the API returns. */
+const NO_MILES = { low: 0, moderate: 0, high: 0, severe: 0, no_travel: 0, unassessed: 0 };
+
+/**
+ * Values from the recorded HERE answer for Chicago to Dallas, in the shape the API returns.
+ * Route 1 is the recommended one: no Severe or High miles and the lowest average risk. Route 2
+ * is quicker but has High miles and a higher average risk; route 3 passes through No Travel.
+ */
 export const routeOne: PlannedRoute = {
   id: 'route-1',
   distance_miles: 926.83,
@@ -128,6 +134,11 @@ export const routeOne: PlannedRoute = {
   geometry: GEOMETRY,
   elapsed_seconds: ELAPSED,
   checkpoints: everyTwentyFiveMiles,
+  risk_miles: { ...NO_MILES, low: 800, moderate: 100, unassessed: 26.8 },
+  average_risk: 0.45,
+  blocked: false,
+  rank: 1,
+  deciding: null,
 };
 
 export const routeTwo: PlannedRoute = {
@@ -138,6 +149,16 @@ export const routeTwo: PlannedRoute = {
   geometry: GEOMETRY,
   elapsed_seconds: ELAPSED,
   checkpoints: everyTwentyFiveMiles,
+  risk_miles: { ...NO_MILES, low: 700, moderate: 150, high: 50, unassessed: 68.8 },
+  average_risk: 0.9,
+  blocked: false,
+  rank: 2,
+  deciding: {
+    criterion: 'high_miles',
+    recommended_value: 0,
+    alternative_value: 50,
+    best_average_risk: null,
+  },
 };
 
 export const routeThree: PlannedRoute = {
@@ -148,6 +169,16 @@ export const routeThree: PlannedRoute = {
   geometry: GEOMETRY,
   elapsed_seconds: ELAPSED,
   checkpoints: everyTwentyFiveMiles,
+  risk_miles: { ...NO_MILES, low: 900, moderate: 100, high: 50, no_travel: 29.4 },
+  average_risk: 0.5,
+  blocked: true,
+  rank: 3,
+  deciding: {
+    criterion: 'blocked',
+    recommended_value: 0,
+    alternative_value: 29.4,
+    best_average_risk: null,
+  },
 };
 
 export const chicagoToDallas: Plan = {
@@ -156,7 +187,50 @@ export const chicagoToDallas: Plan = {
   interval_miles: 25,
   interval_automatic: true,
   routes: [routeOne, routeTwo, routeThree],
+  recommended_route_id: 'route-1',
+  all_blocked_warning: null,
   notices: [],
+};
+
+/**
+ * The same trip when a storm sits on route 1: it gets 50 Severe miles, so the slower route 2
+ * is recommended and ranks first. Route 3 is still blocked.
+ */
+export const chicagoToDallasStormOnRouteOne: Plan = {
+  ...chicagoToDallas,
+  routes: [
+    {
+      ...routeOne,
+      risk_miles: { ...NO_MILES, low: 700, moderate: 100, high: 50, severe: 50, unassessed: 26.8 },
+      average_risk: 1.2,
+      rank: 2,
+      deciding: {
+        criterion: 'severe_miles',
+        recommended_value: 0,
+        alternative_value: 50,
+        best_average_risk: null,
+      },
+    },
+    { ...routeTwo, rank: 1, deciding: null },
+    routeThree,
+  ],
+  recommended_route_id: 'route-2',
+};
+
+/** Every route passes through No Travel conditions at this departure time. */
+export const chicagoToDallasAllBlocked: Plan = {
+  ...chicagoToDallas,
+  routes: [
+    { ...routeOne, blocked: true, risk_miles: { ...routeOne.risk_miles, no_travel: 25 }, rank: 1, deciding: null },
+    { ...routeTwo, blocked: true, risk_miles: { ...routeTwo.risk_miles, no_travel: 50 }, rank: 2, deciding: null },
+    { ...routeThree, rank: 3, deciding: null },
+  ],
+  recommended_route_id: null,
+  all_blocked_warning: {
+    code: 'all_routes_blocked',
+    message:
+      'Do not travel at this departure time. Every route passes through No Travel conditions; try another departure time.',
+  },
 };
 
 /** The plan again, after the driver overrides the interval with 10 mi. */

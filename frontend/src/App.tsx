@@ -5,6 +5,7 @@ import type { Place } from './api/places';
 import { AppShell } from './layout/AppShell';
 import { MapView } from './map/MapView';
 import { PlannerPanel } from './panel/PlannerPanel';
+import { leadRouteId } from './trip/ranking';
 
 export default function App() {
   // The trip's two ends live here because the panel edits them and the map draws them.
@@ -26,7 +27,7 @@ export default function App() {
     planTrip.mutate(request, {
       onSuccess: (planned) => {
         setPlan(planned);
-        setSelectedRouteId(planned.routes[0]?.id ?? null);
+        setSelectedRouteId(leadRouteId(planned));
       },
     });
   }
