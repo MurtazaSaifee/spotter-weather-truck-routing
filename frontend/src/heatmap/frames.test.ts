@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { MISSING, type Heatmap } from '../api/heatmap';
 import { RISK_LEVELS } from '../risk/palette';
-import { buildRiskFrames, rasterFor, type RiskFrames } from './frames';
+import { buildRiskFrames, buildScalarFrames, rasterFor, type Frames } from './frames';
+import { WEATHER_SCALES } from './scales';
 
 const GRID = { origin_lat: 40, origin_lng: -100, spacing_deg: 0.1 };
 
@@ -36,7 +37,7 @@ function heatmapOf(rows: number[][], hours = 1): Pick<Heatmap, 'grid' | 'indices
 const OUTSIDE = -99;
 
 /** The pixel at (x, y), top row first, as `r,g,b` or `clear`. */
-function pixel(frames: RiskFrames, hour: number, x: number, y: number): string {
+function pixel(frames: Frames, hour: number, x: number, y: number): string {
   const offset = (y * frames.width + x) * 4;
   const data = frames.frames[hour];
   return data[offset + 3] === 0
@@ -45,13 +46,13 @@ function pixel(frames: RiskFrames, hour: number, x: number, y: number): string {
 }
 
 /** The pixel over grid point (row, col): the centre of its cell. */
-function pixelOver(frames: RiskFrames, grid: Heatmap['grid'], hour: number, row: number, col: number) {
+function pixelOver(frames: Frames, grid: Heatmap['grid'], hour: number, row: number, col: number) {
   const x = Math.floor(((col + 0.5) * frames.width) / grid.cols);
   const y = Math.floor(((grid.rows - row - 0.5) * frames.height) / grid.rows);
   return pixel(frames, hour, x, y);
 }
 
-function distinctColours(frames: RiskFrames, hour = 0): Set<string> {
+function distinctColours(frames: Frames, hour = 0): Set<string> {
   const seen = new Set<string>();
   for (let y = 0; y < frames.height; y++) {
     for (let x = 0; x < frames.width; x++) seen.add(pixel(frames, hour, x, y));
@@ -216,5 +217,97 @@ describe('risk frames', () => {
 
     expect(frames.frames).toHaveLength(49);
     expect(elapsed).toBeLessThan(1_000);
+  });
+});
+
+describe('weather frames', () => {
+  const SCALES = { wind: 10, rain: 1000, snow: 1000 };
+  const rgb = (hex: string) => {
+    const value = parseInt(hex.slice(1), 16);
+    return `${(value >> 16) & 255},${(value >> 8) & 255},${value & 255}`;
+  };
+
+  /** One row of wind values, in tenths of a mile per hour. */
+  function windAt(...tenthsOfMph: number[]) {
+    const base = heatmapOf([tenthsOfMph]);
+    return { ...base, scales: SCALES, frames: { ...base.frames, wind: [tenthsOfMph] } };
+  }
+
+  it('paints the bottom of the scale at zero and the top at the scale’s maximum', () => {
+    const wind = WEATHER_SCALES.wind;
+    const calm = windAt(0, 0);
+    const gale = windAt(600, 600);
+
+    const calmFrames = buildScalarFrames(calm, 'wind');
+    const galeFrames = buildScalarFrames(gale, 'wind');
+
+    expect(pixelOver(calmFrames, calm.grid, 0, 0, 0)).toBe(rgb(wind.stops[0]));
+    expect(pixelOver(galeFrames, gale.grid, 0, 0, 1)).toBe(rgb(wind.stops.at(-1)!));
+  });
+
+  it('clamps anything above the top of the scale to the top colour', () => {
+    const heatmap = windAt(600, 601, 1500);
+
+    const frames = buildScalarFrames(heatmap, 'wind');
+
+    const top = rgb(WEATHER_SCALES.wind.stops.at(-1)!);
+    [0, 1, 2].forEach((c) => expect(pixelOver(frames, heatmap.grid, 0, 0, c)).toBe(top));
+  });
+
+  it('puts half the scale on the middle colour, reading the integers through the payload’s scale', () => {
+    const base = heatmapOf([[0, 0]]);
+    const heatmap = {
+      ...base,
+      scales: SCALES,
+      // 0.6 in/hr and 1.75 in/hr: half of 1.2 and of 3.5.
+      frames: { ...base.frames, rain: [[600, 600]], snow: [[1750, 1750]] },
+    };
+
+    const rain = buildScalarFrames(heatmap, 'rain');
+    const snow = buildScalarFrames(heatmap, 'snow');
+
+    expect(pixelOver(rain, heatmap.grid, 0, 0, 0)).toBe(rgb(WEATHER_SCALES.rain.stops[2]));
+    expect(pixelOver(snow, heatmap.grid, 0, 0, 0)).toBe(rgb(WEATHER_SCALES.snow.stops[2]));
+  });
+
+  it('runs the scales to 60 mph, 1.2 in/hr and 3.5 in/hr', () => {
+    expect([WEATHER_SCALES.wind.max, WEATHER_SCALES.rain.max, WEATHER_SCALES.snow.max]).toEqual([
+      60, 1.2, 3.5,
+    ]);
+  });
+
+  it('blends the values between two points, so the colour moves along the scale', () => {
+    const heatmap = windAt(0, 600);
+
+    const frames = buildScalarFrames(heatmap, 'wind');
+
+    const y = Math.floor(frames.height / 2);
+    const colours = [...Array(frames.width).keys()].map((x) => pixel(frames, 0, x, y));
+    expect(new Set(colours).size).toBeGreaterThan(10);
+  });
+
+  it('leaves outside the corridor and missing values transparent, like risk', () => {
+    const base = heatmapOf([[0, 0, 0]]);
+    const heatmap = {
+      ...base,
+      indices: [0, 1],
+      scales: SCALES,
+      frames: { ...base.frames, wind: [[300, MISSING]] },
+    };
+
+    const frames = buildScalarFrames(heatmap, 'wind');
+
+    expect(pixelOver(frames, heatmap.grid, 0, 0, 0)).toBe(rgb(WEATHER_SCALES.wind.stops[2]));
+    expect(pixelOver(frames, heatmap.grid, 0, 0, 1)).toBe('clear');
+    expect(pixelOver(frames, heatmap.grid, 0, 0, 2)).toBe('clear');
+  });
+
+  it('is placed exactly where the risk frames are', () => {
+    const heatmap = windAt(100, 200);
+
+    const risk = buildRiskFrames(heatmap);
+    const wind = buildScalarFrames(heatmap, 'wind');
+
+    expect([wind.width, wind.height, wind.bounds]).toEqual([risk.width, risk.height, risk.bounds]);
   });
 });

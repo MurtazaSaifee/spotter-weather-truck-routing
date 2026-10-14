@@ -1,5 +1,7 @@
-import { MISSING, type Heatmap, type HeatmapGrid } from '../api/heatmap';
+import { MISSING, type FrameList, type Heatmap, type HeatmapGrid } from '../api/heatmap';
 import { RISK_LEVELS } from '../risk/palette';
+import type { HeatmapLayer } from './layer';
+import { colourTable, stepFor, WEATHER_SCALES, type WeatherLayer } from './scales';
 
 /** Pure pixel work for the heatmap, kept apart from the worker that runs it. */
 
@@ -81,7 +83,7 @@ function samplingFor(grid: HeatmapGrid, { width, height }: Raster): Sampling {
   return { corners, weights };
 }
 
-export interface RiskFrames extends Raster {
+export interface Frames extends Raster {
   /** One RGBA image per hour, top row first (north), `width * height * 4` bytes each. */
   frames: Uint8ClampedArray[];
 }
@@ -112,7 +114,7 @@ const TOP_LEVEL = LEVEL_COLOURS.length - 1;
  */
 export function buildRiskFrames(
   heatmap: Pick<Heatmap, 'grid' | 'indices'> & { frames: Pick<Heatmap['frames'], 'risk'> },
-): RiskFrames {
+): Frames {
   const { grid, indices } = heatmap;
   const raster = rasterFor(grid);
   const { corners, weights } = samplingFor(grid, raster);
@@ -158,4 +160,76 @@ export function buildRiskFrames(
   });
 
   return { ...raster, frames };
+}
+
+/**
+ * One image per hour of a raw weather layer, coloured from its fixed scale.
+ *
+ * The values are interpolated bilinearly between the points that have data, then coloured, so
+ * the field is smooth. Anything above the scale's top takes the top colour. As with risk, a
+ * pixel is drawn only where at least half its weight is on points with data.
+ */
+export function buildScalarFrames<L extends WeatherLayer>(
+  heatmap: Pick<Heatmap, 'grid' | 'indices' | 'scales'> & { frames: Record<L, FrameList> },
+  layer: L,
+): Frames {
+  const { grid, indices } = heatmap;
+  const { max } = WEATHER_SCALES[layer];
+  // The payload's integers are `scales[layer]` to the unit.
+  const toFraction = 1 / (heatmap.scales[layer] * max);
+  const colours = colourTable(WEATHER_SCALES[layer]);
+  const raster = rasterFor(grid);
+  const { corners, weights } = samplingFor(grid, raster);
+  const [c0, c1, c2, c3] = corners;
+  const [w0, w1, w2, w3] = weights;
+  const pixels = raster.width * raster.height;
+  const dense = new Int32Array(grid.rows * grid.cols + 1);
+
+  const frames = heatmap.frames[layer].map((values) => {
+    dense.fill(MISSING);
+    for (let i = 0; i < indices.length; i++) dense[indices[i]] = values[i];
+
+    const image = new Uint8ClampedArray(pixels * 4);
+    for (let p = 0; p < pixels; p++) {
+      const v0 = dense[c0[p]];
+      const v1 = dense[c1[p]];
+      const v2 = dense[c2[p]];
+      const v3 = dense[c3[p]];
+      const a0 = v0 >= 0 ? w0[p] : 0;
+      const a1 = v1 >= 0 ? w1[p] : 0;
+      const a2 = v2 >= 0 ? w2[p] : 0;
+      const a3 = v3 >= 0 ? w3[p] : 0;
+      const coverage = a0 + a1 + a2 + a3;
+      if (coverage <= 0) continue;
+
+      const value = (a0 * v0 + a1 * v1 + a2 * v2 + a3 * v3) / coverage;
+      const [r, g, b] = colours[stepFor(value * toFraction)];
+      const offset = p * 4;
+      image[offset] = r;
+      image[offset + 1] = g;
+      image[offset + 2] = b;
+      image[offset + 3] = coverage >= 0.5 ? 255 : 0;
+    }
+    return image;
+  });
+
+  return { ...raster, frames };
+}
+
+/** What the worker is asked for: one layer's frames, with what it needs to build them. */
+export interface FrameRequest {
+  layer: HeatmapLayer;
+  grid: HeatmapGrid;
+  indices: number[];
+  scales: Heatmap['scales'];
+  /** The layer's list per hour, as in the payload. */
+  values: FrameList;
+}
+
+/** The frames of whichever layer is asked for. */
+export function buildFrames({ layer, grid, indices, scales, values }: FrameRequest): Frames {
+  if (layer === 'risk') return buildRiskFrames({ grid, indices, frames: { risk: values } });
+  // Only the requested layer's list is sent; it is the only one the builder reads.
+  const frames = { [layer]: values } as Record<WeatherLayer, FrameList>;
+  return buildScalarFrames({ grid, indices, scales, frames }, layer);
 }
