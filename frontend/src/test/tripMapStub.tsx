@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { Heatmap } from '../api/heatmap';
+import type { Heatmap } from '../heatmap/payload';
 import type { Checkpoint, PlannedRoute } from '../api/plan';
 import type { Place } from '../api/places';
 import { useHeatmapLayer } from '../heatmap/layer';

@@ -1,6 +1,6 @@
 import { Box } from '@mui/material';
-import { lazy, type ReactNode, Suspense } from 'react';
-import type { Heatmap } from '../api/heatmap';
+import { lazy, Suspense } from 'react';
+import type { Heatmap } from '../heatmap/payload';
 import type { PlannedRoute } from '../api/plan';
 import type { Place } from '../api/places';
 import { MapPlaceholder } from './MapPlaceholder';
@@ -19,24 +19,15 @@ interface MapViewProps {
   /** Drawn thicker and on top; null when no route can be recommended. */
   recommendedRouteId: string | null;
   onSelectRoute: (id: string) => void;
-  /** A strip under the map, such as the forecast slider. */
-  controls?: ReactNode;
 }
 
-/**
- * The map with a strip of controls beneath it. The strip sits below the map rather than over
- * it: the map's attribution wraps onto several lines in a narrow map, and nothing laid over the
- * map's corners can be sure to stay clear of it.
- */
-export function MapView({ controls, ...props }: MapViewProps) {
+/** The map, in whatever space the layout gives it. */
+export function MapView(props: MapViewProps) {
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', width: '100%', height: '100%' }}>
-      <Box sx={{ position: 'relative', flex: 1, minHeight: 0 }}>
-        <Suspense fallback={<MapPlaceholder />}>
-          <TripMap {...props} />
-        </Suspense>
-      </Box>
-      {controls}
+    <Box sx={{ position: 'relative', width: '100%', height: '100%' }}>
+      <Suspense fallback={<MapPlaceholder />}>
+        <TripMap {...props} />
+      </Suspense>
     </Box>
   );
 }

@@ -19,14 +19,14 @@ is compact: see ``FrameSet``.
 """
 
 import math
-from collections.abc import Iterator, Sequence
+from collections.abc import Collection, Iterator, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from functools import cache
 
 from . import risk, weather
 from .geo import METRES_PER_DEGREE, Point, RouteIndex, sample_along
-from .lattice import POINTS_PER_DEGREE, LatticePoint
+from .lattice import POINTS_PER_DEGREE, LatticePoint, snap_unique
 
 MILE_M = 1609.344
 CORRIDOR_RADIUS_M = 25 * MILE_M
@@ -92,16 +92,41 @@ def build_heatmap(
     leaves at ``departure`` carrying ``load_weight_lb``."""
     step, corridor = _corridor(routes)
     grid, indices = _grid(step, corridor)
-    start = departure.astimezone(UTC).replace(second=0, microsecond=0)
-    timestamps = [start + timedelta(hours=hour) for hour in range(FRAME_HOURS)]
-    forecast = weather.load_forecast(
-        points=[point.coordinates for point in corridor], times=[timestamps[0], timestamps[-1]]
-    )
+    timestamps = _timestamps(departure)
+    forecast = _load_forecast(corridor, timestamps)
     return Heatmap(
         grid=grid,
         indices=indices,
         timestamps=timestamps,
         frames=_frames(forecast, corridor, timestamps, load_weight_lb),
+    )
+
+
+def warm_forecast(
+    routes: Sequence[Sequence[Point]], departure: datetime, loading_elsewhere: Collection[Point]
+) -> None:
+    """Load, and so cache, the forecast ``build_heatmap`` will need for these routes, apart
+    from the points of ``loading_elsewhere`` (the caller is loading those itself).
+
+    The plan does this alongside its own forecast, inside the request: the browser asks for
+    the heatmap as soon as it has the plan, and finds the weather already here. A point is
+    never loaded by both, so the two requests do not race to cache it.
+    """
+    _, corridor = _corridor(routes)
+    skipped = set(snap_unique(loading_elsewhere))
+    _load_forecast([point for point in corridor if point not in skipped], _timestamps(departure))
+
+
+def _timestamps(departure: datetime) -> list[datetime]:
+    start = departure.astimezone(UTC).replace(second=0, microsecond=0)
+    return [start + timedelta(hours=hour) for hour in range(FRAME_HOURS)]
+
+
+def _load_forecast(
+    corridor: Sequence[LatticePoint], timestamps: Sequence[datetime]
+) -> weather.Forecast:
+    return weather.load_forecast(
+        points=[point.coordinates for point in corridor], times=[timestamps[0], timestamps[-1]]
     )
 
 

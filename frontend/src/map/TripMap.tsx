@@ -1,14 +1,16 @@
+import type { PickingInfo } from '@deck.gl/core';
 import { useTheme } from '@mui/material/styles';
 import * as maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import {
   AttributionControl,
   Map,
+  type MapRef,
   NavigationControl,
   Popup,
 } from 'react-map-gl/maplibre';
-import type { Heatmap } from '../api/heatmap';
+import type { Heatmap } from '../heatmap/payload';
 import type { PlannedRoute } from '../api/plan';
 import type { Place } from '../api/places';
 import { useTruckTrack } from '../truck/useTruckTrack';
@@ -17,19 +19,33 @@ import {
   checkpointDots,
   createCheckpointLayers,
   dotAt,
+  nearestDot,
+  TOUCH_TARGET_PX,
   type CheckpointDot,
 } from './checkpointLayers';
 import { DeckGLOverlay } from './DeckGLOverlay';
 import { HeatmapLayers } from './HeatmapLayers';
 import { createLayerStore } from './layerStore';
+import { useMapInsets } from '../layout/mapInsets';
+import { insetStyle } from './framing';
 import { MapFraming } from './MapFraming';
+import { CollapsedAttribution, MapStyles } from './MapStyles';
 import { PlacePins } from './PlacePins';
 import { decodePolyline } from './polyline';
-import { createRouteLayers, ROUTE_PICKING_RADIUS_PX } from './routeLayers';
-import { createRouteLabelLayer, routeLabelsFor } from './routeLabels';
+import { placePopup, POPUP_HEIGHT_PX, POPUP_WIDTH_PX, type PopupAnchor } from './popupPlacement';
+import { LabelPlacement } from './LabelPlacement';
+import {
+  createRouteLayers,
+  ROUTE_LAYER_IDS,
+  ROUTE_PICKING_RADIUS_PX,
+  TOUCH_PICKING_RADIUS_PX,
+  type RoutePath,
+} from './routeLayers';
 import { routeLabels } from '../trip/ranking';
 import { TruckMarker } from './TruckMarker';
 
+// The credit the map's own style does not carry. The style's TileJSON already credits OpenFreeMap,
+// OpenMapTiles and OpenStreetMap; the forecast is Open-Meteo's, which asks for credit under CC BY 4.0.
 const WEATHER_ATTRIBUTION =
   '<a href="https://open-meteo.com/" target="_blank" rel="noreferrer">Weather data by Open-Meteo.com</a> ' +
   '(<a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noreferrer">CC BY 4.0</a>)';
@@ -52,6 +68,22 @@ interface TripMapProps {
   onSelectRoute: (id: string) => void;
 }
 
+// The gap between a dot and the popup that describes it.
+const POPUP_OFFSET_PX = 12;
+const POPUP_EDGE_PX = 8;
+
+/** A checkpoint being described, and where its popup goes so that it stays on the map. */
+interface Described {
+  dot: CheckpointDot;
+  anchor: PopupAnchor;
+  maxHeight: number;
+  width: number;
+}
+
+/** Whether the main way of pointing is a finger: taps, no hover, and thumbs to hit dots with. */
+const prefersTouch = () =>
+  typeof window.matchMedia === 'function' && window.matchMedia('(pointer: coarse)').matches;
+
 export default function TripMap({
   origin,
   destination,
@@ -62,7 +94,14 @@ export default function TripMap({
   recommendedRouteId,
   onSelectRoute,
 }: TripMapProps) {
+  // What the layout covers (a phone's sheet and forecast card): framing, labels and popups
+  // keep clear of it.
+  const padding = useMapInsets();
   const theme = useTheme();
+  const mapRef = useRef<MapRef>(null);
+  const [touch] = useState(prefersTouch);
+  // The route labels change when the map stops moving, outside React's render, like the truck.
+  const [labelLayers] = useState(createLayerStore);
   // The heatmap's layers change every animation frame while it fades; they live in a store the
   // overlay reads, so a slider tick never re-renders this component.
   const [heatmapLayers] = useState(createLayerStore);
@@ -80,20 +119,65 @@ export default function TripMap({
   );
   const dots = useMemo(() => checkpointDots(routes), [routes]);
   // Hovering describes a checkpoint; tapping keeps it described (there is no hover on a phone).
-  const [hovered, setHovered] = useState<CheckpointDot | null>(null);
-  const [pinned, setPinned] = useState<CheckpointDot | null>(null);
+  const [hovered, setHovered] = useState<Described | null>(null);
+  const [pinned, setPinned] = useState<Described | null>(null);
   // A dot from an earlier plan (another interval) is gone, and so is what it described.
-  const stillShown = (dot: CheckpointDot | null) => (dot && dots.includes(dot) ? dot : null);
+  const stillShown = (shown: Described | null) =>
+    shown && dots.includes(shown.dot) ? shown : null;
   const described = stillShown(hovered) ?? stillShown(pinned);
+
+  /** Works out where the popup for `dot` fits on the map as it is now. */
+  function describe(dot: CheckpointDot): Described | null {
+    const map = mapRef.current;
+    if (!map) return null;
+    const { clientWidth: width, clientHeight: height } = map.getContainer();
+    const popupWidth = Math.min(POPUP_WIDTH_PX, width - 2 * POPUP_EDGE_PX);
+    const { x, y } = map.project(dot.position);
+    const { anchor, maxHeight } = placePopup({
+      point: [x, y],
+      size: [popupWidth, POPUP_HEIGHT_PX],
+      area: { width, height, padding },
+      offset: POPUP_OFFSET_PX,
+    });
+    return { dot, anchor, maxHeight, width: popupWidth };
+  }
+
+  function handleHover(info: PickingInfo) {
+    const dot = dotAt(info);
+    setHovered((current) => (dot ? (current?.dot === dot ? current : describe(dot)) : null));
+  }
+
+  function handleClick(info: PickingInfo) {
+    const dot = dotAt(info);
+    if (dot) return setPinned(describe(dot));
+    // A dot a few pixels across is too small for a fingertip: a tap near a dot of the selected
+    // route (not one on another route's line or a label, which select that route) picks it.
+    const layerId = info.layer?.id;
+    const onOtherRoute =
+      layerId !== undefined &&
+      ROUTE_LAYER_IDS.has(layerId) &&
+      (info.object as RoutePath).id !== selectedRouteId;
+    const map = mapRef.current;
+    if (touch && map && !onOtherRoute && layerId !== 'route-labels') {
+      const near = nearestDot(
+        dots.filter((candidate) => candidate.routeId === selectedRouteId),
+        [info.x, info.y],
+        (position) => {
+          const { x, y } = map.project(position);
+          return [x, y];
+        },
+        TOUCH_TARGET_PX / 2,
+      );
+      if (near) return setPinned(describe(near));
+    }
+    setPinned(null);
+  }
 
   const blockedRouteIds = useMemo(
     () => new Set(routes.filter((route) => route.blocked).map((route) => route.id)),
     [routes],
   );
-  const labels = useMemo(
-    () => routeLabelsFor(routes, paths, routeLabels(routes), recommendedRouteId),
-    [routes, paths, recommendedRouteId],
-  );
+  const names = useMemo(() => routeLabels(routes), [routes]);
 
   const layers = [
     ...createRouteLayers({
@@ -107,51 +191,63 @@ export default function TripMap({
       otherColor: theme.palette.grey[500],
     }),
     ...createCheckpointLayers({ dots, selectedRouteId }),
-    createRouteLabelLayer(labels, onSelectRoute),
   ];
 
   return (
     <Map
+      ref={mapRef}
       mapLib={maplibregl}
       mapStyle={MAP_STYLE}
       initialViewState={INITIAL_VIEW_STATE}
-      style={{ width: '100%', height: '100%' }}
+      style={{ width: '100%', height: '100%', ...insetStyle(padding) }}
       attributionControl={false}
     >
-      {/* The style's TileJSON already credits OpenFreeMap, OpenMapTiles and OSM; the forecast
-          is Open-Meteo's, which asks for credit under CC BY 4.0. */}
-      <AttributionControl
-        position="bottom-right"
-        compact={false}
-        customAttribution={WEATHER_ATTRIBUTION}
-      />
+      <MapStyles />
+      {/* Collapses to an info button on a narrow map; every credit stays one tap away. */}
+      <AttributionControl position="bottom-right" customAttribution={WEATHER_ATTRIBUTION} />
+      <CollapsedAttribution />
       <NavigationControl position="top-right" />
       <PlacePins origin={origin} destination={destination} />
-      <MapFraming origin={origin} destination={destination} routes={paths} />
+      <MapFraming origin={origin} destination={destination} routes={paths} insets={padding} />
       <HeatmapLayers heatmap={heatmap} underlay={heatmapLayers} />
+      <LabelPlacement
+        routes={routes}
+        paths={paths}
+        names={names}
+        selectedRouteId={selectedRouteId}
+        recommendedRouteId={recommendedRouteId}
+        onSelectRoute={onSelectRoute}
+        insets={padding}
+        layers={labelLayers}
+      />
       <TruckMarker track={truckTrack} layers={truckLayers} />
       <DeckGLOverlay
         layers={layers}
         underlay={heatmapLayers}
+        labelLayers={labelLayers}
         topLayers={truckLayers}
-        pickingRadius={ROUTE_PICKING_RADIUS_PX}
-        onHover={(info) => setHovered(dotAt(info))}
-        onClick={(info) => setPinned(dotAt(info))}
+        pickingRadius={touch ? TOUCH_PICKING_RADIUS_PX : ROUTE_PICKING_RADIUS_PX}
+        onHover={handleHover}
+        onClick={handleClick}
       />
       {described && timeZone && (
         <Popup
-          longitude={described.position[0]}
-          latitude={described.position[1]}
-          anchor="bottom"
-          offset={12}
-          closeButton={false}
+          longitude={described.dot.position[0]}
+          latitude={described.dot.position[1]}
+          anchor={described.anchor}
+          offset={POPUP_OFFSET_PX}
+          maxWidth="none"
+          closeButton={touch}
+          onClose={() => setPinned(null)}
           closeOnClick={false}
           focusAfterOpen={false}
         >
           <CheckpointDetails
-            checkpoint={described.checkpoint}
-            routeLabel={described.routeLabel}
+            checkpoint={described.dot.checkpoint}
+            routeLabel={described.dot.routeLabel}
             timeZone={timeZone}
+            width={described.width}
+            maxHeight={described.maxHeight}
           />
         </Popup>
       )}

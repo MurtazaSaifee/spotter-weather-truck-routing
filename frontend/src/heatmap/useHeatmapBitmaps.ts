@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import type { Heatmap } from '../api/heatmap';
+import type { Heatmap } from './payload';
 import type { Bounds, FrameRequest } from './frames';
 import type { FrameResponse } from './heatmap.worker';
 import type { HeatmapLayer } from './layer';

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { MISSING, type Heatmap } from '../api/heatmap';
+import { MISSING, type Heatmap } from './payload';
 import { RISK_LEVELS } from '../risk/palette';
 import { buildRiskFrames, buildScalarFrames, rasterFor, type Frames } from './frames';
 import { WEATHER_SCALES } from './scales';

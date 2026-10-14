@@ -6,7 +6,9 @@ import type { LayerStore } from './layerStore';
 type DeckGLOverlayProps = MapboxOverlayProps & {
   /** Layers drawn under `layers` that change on their own, outside React (the heatmap). */
   underlay?: LayerStore;
-  /** Layers drawn over `layers`, likewise changing outside React (the truck). */
+  /** Layers drawn over `layers`, likewise changing outside React (the route labels). */
+  labelLayers?: LayerStore;
+  /** Layers drawn over everything else, likewise changing outside React (the truck). */
   topLayers?: LayerStore;
 };
 
@@ -15,10 +17,10 @@ type DeckGLOverlayProps = MapboxOverlayProps & {
  * layers can sit between base-map layers, e.g. a heatmap under road labels.
  *
  * There is one overlay per map (deck.gl shares a single Deck between overlays), so the
- * heatmap's layers come in through `underlay` and the truck's through `topLayers`, and they are
- * merged here with the layers React owns.
+ * heatmap's layers come in through `underlay`, the route labels through `labelLayers` and the
+ * truck's through `topLayers`, and they are merged here with the layers React owns.
  */
-export function DeckGLOverlay({ underlay, topLayers, ...props }: DeckGLOverlayProps) {
+export function DeckGLOverlay({ underlay, labelLayers: labels, topLayers, ...props }: DeckGLOverlayProps) {
   const { current: mapRef } = useMap();
   const [overlay] = useState(() => new MapboxOverlay({ ...props, interleaved: true }));
 
@@ -39,7 +41,7 @@ export function DeckGLOverlay({ underlay, topLayers, ...props }: DeckGLOverlayPr
 
   overlay.setProps({
     ...props,
-    layers: [underlay?.get() ?? [], props.layers, topLayers?.get() ?? []],
+    layers: [underlay?.get() ?? [], props.layers, labels?.get() ?? [], topLayers?.get() ?? []],
   });
 
   const latest = useRef(props.layers);
@@ -49,13 +51,18 @@ export function DeckGLOverlay({ underlay, topLayers, ...props }: DeckGLOverlayPr
   useEffect(() => {
     const refresh = () => {
       overlay.setProps({
-        layers: [underlay?.get() ?? [], latest.current, topLayers?.get() ?? []],
+        layers: [
+          underlay?.get() ?? [],
+          latest.current,
+          labels?.get() ?? [],
+          topLayers?.get() ?? [],
+        ],
       });
     };
-    const unsubscribes = [underlay, topLayers].flatMap((store) =>
+    const unsubscribes = [underlay, labels, topLayers].flatMap((store) =>
       store ? [store.subscribe(refresh)] : [],
     );
     return () => unsubscribes.forEach((unsubscribe) => unsubscribe());
-  }, [underlay, topLayers, overlay]);
+  }, [underlay, labels, topLayers, overlay]);
   return null;
 }

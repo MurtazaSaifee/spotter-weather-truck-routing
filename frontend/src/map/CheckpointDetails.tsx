@@ -8,18 +8,32 @@ import type {
 } from '../api/plan';
 import { riskStyle } from '../risk/palette';
 import { formatInZone, formatMilesExact } from '../trip/format';
+import { POPUP_WIDTH_PX } from './popupPlacement';
 
 interface CheckpointDetailsProps {
   checkpoint: Checkpoint;
   routeLabel: string;
   /** The origin's zone: the ETA is shown, and labelled, in it. */
   timeZone: string;
+  /** How wide the popup is, in pixels; narrower than the default on a very narrow map. */
+  width?: number;
+  /** The tallest it may be before it scrolls: what the visible map has room for. */
+  maxHeight?: number;
 }
 
-/** What the map says about a checkpoint when the driver hovers or taps it. */
-export function CheckpointDetails({ checkpoint, routeLabel, timeZone }: CheckpointDetailsProps) {
+/**
+ * What the map says about a checkpoint when the driver hovers or taps it. Its size is set
+ * from outside because the map decides where it goes by that size.
+ */
+export function CheckpointDetails({
+  checkpoint,
+  routeLabel,
+  timeZone,
+  width = POPUP_WIDTH_PX,
+  maxHeight,
+}: CheckpointDetailsProps) {
   return (
-    <Box role="tooltip" sx={{ minWidth: 200 }}>
+    <Box role="tooltip" sx={{ width, maxHeight, overflowY: 'auto', boxSizing: 'border-box', p: 1.25 }}>
       <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
         {routeLabel}
       </Typography>

@@ -7,7 +7,24 @@ export default defineConfig({
   plugins: [react()],
   server: {
     proxy: {
-      '/api': { target: 'http://127.0.0.1:8000', changeOrigin: true },
+      '/api': {
+        // Another backend (say, a second checkout's) is one environment variable away.
+        target: process.env.API_PROXY_TARGET ?? 'http://127.0.0.1:8000',
+        changeOrigin: true,
+      },
+    },
+  },
+  build: {
+    rolldownOptions: {
+      output: {
+        // The map is one lazy chunk of nearly 2 MB. Split into the two libraries it is made of
+        // so the browser fetches them side by side, and each is cached on its own across deploys.
+        codeSplitting: {
+          groups: [
+            { name: 'maplibre', test: /node_modules[\\/]maplibre-gl[\\/]/, priority: 20 },
+          ],
+        },
+      },
     },
   },
   test: {
