@@ -1,0 +1,35 @@
+[project]
+name = "spotter-backend"
+version = "0.1.0"
+description = "Weather-aware truck routing API"
+requires-python = ">=3.13"
+dependencies = [
+    "django>=6.1.2",
+    "djangorestframework>=3.18.3",
+    "drf-spectacular>=0.30.0",
+    "gunicorn>=26.2.0",
+    "httpx>=0.28.1",
+    "python-dotenv>=1.2.4",
+    "redis>=8.1.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+    "pytest-django>=4.14.0",
+    "respx>=0.23.1",
+    "ruff>=0.17.0",
+]
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "config.test_settings"
+pythonpath = ["."]
+testpaths = ["tests"]
+addopts = "--strict-markers"
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "SIM", "DJ", "RUF"]
