@@ -11,6 +11,7 @@ interface MapViewProps {
   origin: Place | null;
   destination: Place | null;
   routes: PlannedRoute[];
+  timeZone: string | null;
   selectedRouteId: string | null;
   onSelectRoute: (id: string) => void;
 }

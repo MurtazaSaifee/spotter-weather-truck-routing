@@ -1,6 +1,6 @@
 import { Stack } from '@mui/material';
 import type { ApiError } from '../api/client';
-import type { Plan, PlanRequest } from '../api/plan';
+import type { Plan, PlanRequest, SamplingInterval } from '../api/plan';
 import type { Place } from '../api/places';
 import { AppHeader } from './AppHeader';
 import { HealthStatus } from './HealthStatus';
@@ -18,6 +18,7 @@ interface PlannerPanelProps {
   plan: Plan | null;
   selectedRouteId: string | null;
   onSelectRoute: (id: string) => void;
+  onIntervalChange: (interval: SamplingInterval) => void;
 }
 
 export function PlannerPanel({
@@ -31,6 +32,7 @@ export function PlannerPanel({
   plan,
   selectedRouteId,
   onSelectRoute,
+  onIntervalChange,
 }: PlannerPanelProps) {
   return (
     <Stack spacing={3} sx={{ p: 3 }}>
@@ -49,6 +51,7 @@ export function PlannerPanel({
         plan={plan}
         selectedRouteId={selectedRouteId}
         onSelectRoute={onSelectRoute}
+        onIntervalChange={onIntervalChange}
       />
       <HealthStatus />
     </Stack>
