@@ -1,4 +1,4 @@
-import { Box, Button, CircularProgress, Paper, Slider, Typography } from '@mui/material';
+import { Box, Button, CircularProgress, Slider, Typography } from '@mui/material';
 import { describeWait, type RateLimitWait } from '../api/rateLimit';
 import { MAX_FORECAST_HOUR, useForecastHour, useForecastHourStore } from './forecastHour';
 import { forecastLabel } from './forecastLabel';
@@ -16,7 +16,7 @@ interface HeatmapControlsProps {
 }
 
 /**
- * The forecast heatmap's control strip, laid over the bottom of the map: "Checking forecasts…"
+ * The forecast heatmap's control strip, under the map: "Checking forecasts…"
  * while the heatmap loads (the routes and recommendation never wait for it), the hour slider
  * once it is there, and a retry when it failed.
  */
@@ -28,16 +28,14 @@ export function HeatmapControls({
   onRetry,
 }: HeatmapControlsProps) {
   return (
-    <Paper
-      elevation={3}
+    <Box
       sx={{
-        position: 'absolute',
-        left: 16,
-        bottom: 32,
-        width: 'min(460px, calc(100% - 32px))',
+        flex: 'none',
         px: 2,
         py: 1,
-        zIndex: 1,
+        bgcolor: 'background.paper',
+        borderTop: 1,
+        borderColor: 'divider',
       }}
     >
       {status === 'loading' && (
@@ -60,7 +58,7 @@ export function HeatmapControls({
         </Box>
       )}
       {status === 'ready' && <HourSlider departure={departure} timeZone={timeZone} />}
-    </Paper>
+    </Box>
   );
 }
 

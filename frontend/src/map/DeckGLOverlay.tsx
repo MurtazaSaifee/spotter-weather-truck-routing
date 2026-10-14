@@ -1,6 +1,6 @@
 import { MapboxOverlay, type MapboxOverlayProps } from '@deck.gl/mapbox';
-import { useEffect, useRef } from 'react';
-import { useControl } from 'react-map-gl/maplibre';
+import { useEffect, useRef, useState } from 'react';
+import { useMap } from 'react-map-gl/maplibre';
 import type { LayerStore } from './layerStore';
 
 type DeckGLOverlayProps = MapboxOverlayProps & {
@@ -16,9 +16,24 @@ type DeckGLOverlayProps = MapboxOverlayProps & {
  * heatmap's layers come in through `underlay` and are merged here with the layers React owns.
  */
 export function DeckGLOverlay({ underlay, ...props }: DeckGLOverlayProps) {
-  const overlay = useControl<MapboxOverlay>(
-    () => new MapboxOverlay({ ...props, interleaved: true }),
-  );
+  const { current: mapRef } = useMap();
+  const [overlay] = useState(() => new MapboxOverlay({ ...props, interleaved: true }));
+
+  // Adding the control builds a Deck on the map's single WebGL context, and luma.gl cannot
+  // attach two devices to one context at once. React's StrictMode (dev) mounts every effect,
+  // unmounts it and mounts it again straight away, which would build two Decks in the same
+  // tick and fail with "WebGL context already attached". Adding on a timer lets the throwaway
+  // mount be cancelled before it builds anything.
+  useEffect(() => {
+    const map = mapRef?.getMap();
+    if (!map) return;
+    const timer = setTimeout(() => map.addControl(overlay), 0);
+    return () => {
+      clearTimeout(timer);
+      if (map.hasControl(overlay)) map.removeControl(overlay);
+    };
+  }, [mapRef, overlay]);
+
   overlay.setProps({ ...props, layers: [underlay?.get() ?? [], props.layers] });
 
   const latest = useRef(props.layers);
