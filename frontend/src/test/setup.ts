@@ -16,6 +16,16 @@ window.matchMedia = (query: string): MediaQueryList => ({
   dispatchEvent: () => false,
 });
 
+// jsdom has no layout, so nothing ever resizes: observers exist but never fire.
+globalThis.ResizeObserver = class {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+};
+
+// ...and it does not scroll elements either.
+Element.prototype.scrollTo = () => undefined;
+
 beforeAll(() => server.listen({ onUnhandledRequest: 'error' }));
 
 afterEach(() => {
