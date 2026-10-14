@@ -98,6 +98,11 @@ SPECTACULAR_SETTINGS = {
     "SERVE_INCLUDE_SCHEMA": False,
     "SWAGGER_UI_DIST": SWAGGER_UI_DIST,
     "SWAGGER_UI_FAVICON_HREF": f"{SWAGGER_UI_DIST}/favicon-32x32.png",
+    "ENUM_NAME_OVERRIDES": {
+        "RiskLevelEnum": "api.serializers.LEVEL_CODES",
+        "CheckpointRiskLevelEnum": "api.serializers.LEVEL_CODES_OR_NO_DATA",
+        "ConditionNameEnum": "api.serializers.CONDITION_NAMES",
+    },
 }
 
 LOGGING = {
