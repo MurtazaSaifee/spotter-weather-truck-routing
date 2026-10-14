@@ -202,7 +202,8 @@ class RiskSerializer(serializers.Serializer):
         choices=LEVEL_CODES_OR_NO_DATA,
         help_text=(
             "The worst of wind (after the load rules), rain and snow. `no_data` when the "
-            "forecast lacks sustained wind, rain or snow: never treated as `low`."
+            "forecast lacks sustained wind, rain or snow: never treated as `low`. The one "
+            "exception is a known `no_travel`, which missing values cannot change."
         ),
     )
     score = RoundedFloatField(
@@ -261,8 +262,9 @@ class CheckpointSerializer(serializers.Serializer):
     weather = WeatherSerializer(
         allow_null=True,
         help_text=(
-            "The forecast for the hour the truck is here. Null means No data: there is no "
-            "forecast for the sustained wind, rain or snow at that hour or the one beside it."
+            "The forecast for the hour the truck is here. Null when there is no forecast for "
+            "the sustained wind, rain or snow at that hour or the one beside it; `risk` still "
+            "gives the conditions that are known."
         ),
     )
     risk = RiskSerializer(help_text="How risky the forecast is for this load.")
