@@ -159,3 +159,63 @@ describe('checkpoints on the map', () => {
     expect(screen.getByRole('tooltip')).toHaveTextContent('Covers 12.5 mi');
   });
 });
+
+describe('forecast at a checkpoint', () => {
+  it('shows wind, gusts, rain rate and snowfall rate with their units', async () => {
+    answerPlans();
+    const user = userEvent.setup();
+    renderApp();
+    await planTrip(user);
+
+    await user.click(screen.getByRole('button', { name: 'Route 1 checkpoint at mile 25' }));
+
+    const details = screen.getByRole('tooltip');
+    expect(details).toHaveTextContent('Wind 18.2 mph');
+    expect(details).toHaveTextContent('Gusts 29.6 mph');
+    expect(details).toHaveTextContent('Rain rate 0.034 in/hr');
+    expect(details).toHaveTextContent('Snowfall rate 0.5 in/hr');
+  });
+
+  it('shows zero rain as zero, not as missing', async () => {
+    answerPlans();
+    const user = userEvent.setup();
+    renderApp();
+    await planTrip(user);
+
+    await user.click(screen.getByRole('button', { name: 'Route 1 checkpoint at mile 0' }));
+
+    const details = screen.getByRole('tooltip');
+    expect(details).toHaveTextContent('Rain rate 0 in/hr');
+    expect(details).not.toHaveTextContent('No data');
+  });
+
+  it('says No data, and shows no weather, for a checkpoint without a forecast', async () => {
+    answerPlans();
+    const user = userEvent.setup();
+    renderApp();
+    await planTrip(user);
+
+    await user.click(screen.getByRole('button', { name: 'Route 1 checkpoint at mile 50' }));
+
+    const details = screen.getByRole('tooltip');
+    expect(details).toHaveTextContent('No data');
+    expect(details).not.toHaveTextContent('mph');
+    expect(details).not.toHaveTextContent('in/hr');
+  });
+
+  it('shows the rest of the forecast when only the gust is missing', async () => {
+    answerPlans();
+    const user = userEvent.setup();
+    renderApp();
+    await planTrip(user);
+    await user.click(interval(10));
+    await vi.waitFor(() => expect(interval(10)).toHaveAttribute('aria-pressed', 'true'));
+
+    await user.click(screen.getByRole('button', { name: 'Route 1 checkpoint at mile 10' }));
+
+    const details = screen.getByRole('tooltip');
+    expect(details).toHaveTextContent('Wind 9 mph');
+    expect(details).toHaveTextContent('Gusts no data');
+    expect(details).not.toHaveTextContent('Wind no data');
+  });
+});

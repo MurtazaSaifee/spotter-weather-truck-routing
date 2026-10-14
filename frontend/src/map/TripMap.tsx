@@ -23,6 +23,10 @@ import { PlacePins } from './PlacePins';
 import { decodePolyline } from './polyline';
 import { createRouteLayers, ROUTE_PICKING_RADIUS_PX } from './routeLayers';
 
+const WEATHER_ATTRIBUTION =
+  '<a href="https://open-meteo.com/" target="_blank" rel="noreferrer">Weather data by Open-Meteo.com</a> ' +
+  '(<a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noreferrer">CC BY 4.0</a>)';
+
 const MAP_STYLE = 'https://tiles.openfreemap.org/styles/positron';
 
 // Continental US.
@@ -79,8 +83,13 @@ export default function TripMap({
       style={{ width: '100%', height: '100%' }}
       attributionControl={false}
     >
-      {/* The style's TileJSON already credits OpenFreeMap, OpenMapTiles and OSM. */}
-      <AttributionControl position="bottom-right" compact={false} />
+      {/* The style's TileJSON already credits OpenFreeMap, OpenMapTiles and OSM; the forecast
+          is Open-Meteo's, which asks for credit under CC BY 4.0. */}
+      <AttributionControl
+        position="bottom-right"
+        compact={false}
+        customAttribution={WEATHER_ATTRIBUTION}
+      />
       <NavigationControl position="top-right" />
       <PlacePins origin={origin} destination={destination} />
       <MapFraming origin={origin} destination={destination} routes={paths} />
