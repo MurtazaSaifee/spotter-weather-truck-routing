@@ -1,4 +1,4 @@
-import { screen } from '@testing-library/react';
+import { screen, within } from '@testing-library/react';
 import userEvent, { type UserEvent } from '@testing-library/user-event';
 import { delay, http, HttpResponse } from 'msw';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -183,5 +183,72 @@ describe('the forecast heatmap', () => {
     await user.click(screen.getByRole('button', { name: 'Retry' }));
     await slider();
     expect(requests).toHaveLength(2);
+  });
+});
+
+describe('the heatmap layer toggle', () => {
+  const legend = () => screen.getByRole('group', { name: 'Heatmap legend' });
+  const layerButton = (name: string) => screen.getByRole('button', { name });
+
+  it('shows combined risk to begin with, with the risk bands in the legend', async () => {
+    answerWith(heatmapOk);
+    const user = userEvent.setup();
+    renderApp();
+
+    await planChicagoToDallas(user);
+    await slider();
+
+    expect(layerButton('Risk')).toHaveAttribute('aria-pressed', 'true');
+    for (const name of ['Wind', 'Rain', 'Snow']) {
+      expect(layerButton(name)).toHaveAttribute('aria-pressed', 'false');
+    }
+    for (const band of ['Low', 'Moderate', 'High', 'Severe', 'No Travel']) {
+      expect(within(legend()).getByText(band)).toBeInTheDocument();
+    }
+  });
+
+  it('switches the legend to the raw weather, with its units and its top value', async () => {
+    answerWith(heatmapOk);
+    const user = userEvent.setup();
+    renderApp();
+
+    await planChicagoToDallas(user);
+    await slider();
+
+    await user.click(layerButton('Wind'));
+    expect(layerButton('Wind')).toHaveAttribute('aria-pressed', 'true');
+    expect(layerButton('Risk')).toHaveAttribute('aria-pressed', 'false');
+    expect(within(legend()).getByText('Wind speed (mph)')).toBeInTheDocument();
+    expect(within(legend()).getByText('60+')).toBeInTheDocument();
+    expect(within(legend()).queryByText('Moderate')).not.toBeInTheDocument();
+
+    await user.click(layerButton('Rain'));
+    expect(within(legend()).getByText('Rain rate (in/hr)')).toBeInTheDocument();
+    expect(within(legend()).getByText('1.2+')).toBeInTheDocument();
+
+    await user.click(layerButton('Snow'));
+    expect(within(legend()).getByText('Snowfall rate (in/hr)')).toBeInTheDocument();
+    expect(within(legend()).getByText('3.5+')).toBeInTheDocument();
+
+    await user.click(layerButton('Risk'));
+    expect(within(legend()).getByText('Moderate')).toBeInTheDocument();
+  });
+
+  it('keeps the hour and asks the server for nothing when the layer changes', async () => {
+    const requests = answerWith(heatmapOk);
+    const user = userEvent.setup();
+    renderApp();
+
+    await planChicagoToDallas(user);
+    const hours = await slider();
+    hours.focus();
+    await user.keyboard('{ArrowRight>5/}');
+
+    await user.click(layerButton('Snow'));
+    await user.click(layerButton('Rain'));
+
+    expect(screen.getByRole('img', { name: 'Forecast heatmap' })).toHaveTextContent('rain layer');
+    expect(screen.getByText('T+5h · Thu 13:00 CDT')).toBeInTheDocument();
+    expect(requests).toHaveLength(1);
   });
 });
