@@ -33,3 +33,6 @@ docs/
 .scratch/
 CLAUDE.md
 GLOSSARY.md
+
+# Local Claude tooling
+.claude/
