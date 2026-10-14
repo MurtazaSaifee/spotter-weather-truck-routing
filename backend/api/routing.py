@@ -34,6 +34,7 @@ from .geo import (
     point_along,
     sample_along,
 )
+from .providers import PROVIDER_ERRORS, describe_error
 
 logger = logging.getLogger(__name__)
 
@@ -64,10 +65,8 @@ EMPTY_TRUCK_WEIGHT_LB = 35_000
 KG_PER_LB = 0.45359237
 
 ROUTE_CACHE_SECONDS = 15 * 60
+# Bumped when what is cached under "routes:" changes shape. Each adapter versions its own keys.
 _CACHE_KEY_VERSION = "v1"
-
-# HERE failed when the request errors or times out, or when its answer isn't the shape we parse.
-_PROVIDER_ERRORS = (httpx.HTTPError, ValueError, KeyError, TypeError)
 
 
 class NoRouteFoundError(ApiError):
@@ -291,17 +290,11 @@ def _request_routes(trip: TripRequest, via: Point | None = None) -> list[Route]:
         response.raise_for_status()
         items: list[dict[str, Any]] = response.json()["routes"]
         return [_parse_route(item) for item in items]
-    except _PROVIDER_ERRORS as error:
+    except PROVIDER_ERRORS as error:
         # Never log the exception itself: httpx puts the request URL, and with it the
         # HERE key, in its message.
-        logger.error("HERE routing failed (%s)", _describe(error))
+        logger.error("HERE routing failed (%s)", describe_error(error))
         raise RoutingUnavailableError() from None
-
-
-def _describe(error: Exception) -> str:
-    if isinstance(error, httpx.HTTPStatusError):
-        return f"HTTP {error.response.status_code}"
-    return type(error).__name__
 
 
 def _parse_route(item: dict[str, Any]) -> Route:

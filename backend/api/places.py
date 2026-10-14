@@ -14,6 +14,7 @@ from django.conf import settings
 from tzfpy import get_tz
 
 from .errors import ApiError
+from .providers import PROVIDER_ERRORS, describe_error
 
 logger = logging.getLogger(__name__)
 
@@ -38,10 +39,6 @@ PHOTON_USER_AGENT = "spotter-truck-routing-takehome/0.1"
 PHOTON_TIMEOUT = httpx.Timeout(4.0)
 
 Provider = Literal["here", "photon"]
-
-# A provider "fails" when the request errors or times out, or when its answer isn't the
-# shape we parse.
-_PROVIDER_ERRORS = (httpx.HTTPError, ValueError, KeyError, TypeError)
 
 
 @dataclass(frozen=True)
@@ -72,21 +69,17 @@ def suggest(query: str) -> Suggestions:
     """
     try:
         return Suggestions("here", _here_places(query))
-    except _PROVIDER_ERRORS as error:
+    except PROVIDER_ERRORS as error:
         # Never log the exception itself: httpx puts the request URL, and with it the
         # HERE key, in its message.
-        logger.warning("HERE Autosuggest failed (%s); falling back to Photon", _describe(error))
+        logger.warning(
+            "HERE Autosuggest failed (%s); falling back to Photon", describe_error(error)
+        )
     try:
         return Suggestions("photon", _photon_places(query))
-    except _PROVIDER_ERRORS as error:
-        logger.error("Photon failed too (%s)", _describe(error))
+    except PROVIDER_ERRORS as error:
+        logger.error("Photon failed too (%s)", describe_error(error))
     raise PlacesUnavailableError()
-
-
-def _describe(error: Exception) -> str:
-    if isinstance(error, httpx.HTTPStatusError):
-        return f"HTTP {error.response.status_code}"
-    return type(error).__name__
 
 
 def _here_places(query: str) -> list[Place]:

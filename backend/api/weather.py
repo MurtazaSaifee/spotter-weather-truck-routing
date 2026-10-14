@@ -33,6 +33,7 @@ from django.utils import timezone
 from .errors import ApiError
 from .geo import Point
 from .lattice import LatticePoint, snap_unique
+from .providers import PROVIDER_ERRORS, describe_error
 
 logger = logging.getLogger(__name__)
 
@@ -51,6 +52,7 @@ CACHE_SECONDS = 60 * 60
 # A Redis request carries at most 10 MB; 200 entries of under 1 KB are far inside that.
 CACHE_READ_CHUNK = 200
 CACHE_WRITE_CHUNK = 200
+# Bumped when what is cached under "weather:" changes shape. Each adapter versions its own keys.
 _CACHE_KEY_VERSION = "v1"
 
 # Entries hold whole numbers: wind and gusts in tenths of a mile per hour, rain and snow in
@@ -59,9 +61,6 @@ _WIND_SCALE = 10
 _PRECIPITATION_SCALE = 1000
 _MISSING = -32768
 _MAX_STORED = 32767
-
-# Open-Meteo failed when the request errors, or when its answer isn't the shape we parse.
-_PROVIDER_ERRORS = (httpx.HTTPError, ValueError, KeyError, TypeError)
 
 
 class WeatherUnavailableError(ApiError):
@@ -246,8 +245,8 @@ def _fetch(points: Sequence[LatticePoint]) -> dict[LatticePoint, Series]:
             point: _parse_series(result["hourly"])
             for point, result in zip(points, results, strict=True)
         }
-    except _PROVIDER_ERRORS as error:
-        logger.error("Open-Meteo failed (%s)", _describe(error))
+    except PROVIDER_ERRORS as error:
+        logger.error("Open-Meteo failed (%s)", describe_error(error))
         raise WeatherUnavailableError() from None
 
 
@@ -290,12 +289,6 @@ def _retry_after_seconds(response: httpx.Response) -> int:
     except (TypeError, ValueError):
         pass
     return 60 - timezone.now().second
-
-
-def _describe(error: Exception) -> str:
-    if isinstance(error, httpx.HTTPStatusError):
-        return f"HTTP {error.response.status_code}"
-    return type(error).__name__
 
 
 # --- The cache ----------------------------------------------------------------------------
