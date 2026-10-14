@@ -11,6 +11,7 @@ dependencies = [
     "httpx>=0.28.1",
     "python-dotenv>=1.2.4",
     "redis>=8.1.0",
+    "tzfpy>=2.1.1",
 ]
 
 [dependency-groups]

@@ -1,0 +1,180 @@
+{
+  "items": [
+    {
+      "title": "Chicago, IL, United States",
+      "id": "here:cm:namedplace:21002647",
+      "resultType": "locality",
+      "localityType": "city",
+      "address": {
+        "label": "Chicago, IL, United States"
+      },
+      "position": {
+        "lat": 41.88425,
+        "lng": -87.63245
+      },
+      "distance": 953070,
+      "mapView": {
+        "west": -87.93894,
+        "south": 41.62996,
+        "east": -87.52444,
+        "north": 42.02299
+      },
+      "highlights": {
+        "title": [
+          {
+            "start": 0,
+            "end": 7
+          }
+        ],
+        "address": {
+          "label": [
+            {
+              "start": 0,
+              "end": 7
+            }
+          ]
+        }
+      }
+    },
+    {
+      "title": "Wrigley Field (Chicago Cubs Baseball Club)",
+      "id": "here:pds:place:840dp3wt-0336648f79d143cdbcf1d95b7968c9d3",
+      "resultType": "place",
+      "address": {
+        "label": "Wrigley Field, 1060 W Addison St, Chicago, IL 60613, United States"
+      },
+      "position": {
+        "lat": 41.94757,
+        "lng": -87.65631
+      },
+      "access": [
+        {
+          "lat": 41.94736,
+          "lng": -87.65663
+        }
+      ],
+      "distance": 952700,
+      "categories": [
+        {
+          "id": "800-8600-0180",
+          "name": "Sports Complex/Stadium",
+          "primary": true
+        },
+        {
+          "id": "100-1000-0004",
+          "name": "Food Market/Stall"
+        },
+        {
+          "id": "200-2000-0011",
+          "name": "Bar or Pub"
+        },
+        {
+          "id": "200-2200-0020",
+          "name": "Performing Arts Center"
+        },
+        {
+          "id": "300-3000-0023",
+          "name": "Tourist Attraction"
+        },
+        {
+          "id": "700-7200-0269",
+          "name": "Organizations and Societies"
+        },
+        {
+          "id": "800-8600-0197",
+          "name": "Sports Activities"
+        },
+        {
+          "id": "900-9300-0221",
+          "name": "Residential Area/Building"
+        }
+      ],
+      "references": [
+        {
+          "supplier": {
+            "id": "core"
+          },
+          "id": "1207402512"
+        },
+        {
+          "supplier": {
+            "id": "core"
+          },
+          "id": "17078486"
+        },
+        {
+          "supplier": {
+            "id": "tripadvisor"
+          },
+          "id": "104004"
+        },
+        {
+          "supplier": {
+            "id": "tripadvisor"
+          },
+          "id": "28155120"
+        },
+        {
+          "supplier": {
+            "id": "yelp"
+          },
+          "id": "U_EM2fxxYu6sfWzpkLy7WQ"
+        }
+      ],
+      "foodTypes": [
+        {
+          "id": "101-000",
+          "name": "American",
+          "primary": true
+        }
+      ],
+      "highlights": {
+        "title": [
+          {
+            "start": 15,
+            "end": 22
+          }
+        ],
+        "address": {
+          "label": []
+        }
+      }
+    },
+    {
+      "title": "Chicago, Athol, KS 66932, United States",
+      "id": "here:af:street:MhqaykOaSHC9sjEvT-OxAD",
+      "resultType": "street",
+      "address": {
+        "label": "Chicago, Athol, KS 66932, United States"
+      },
+      "position": {
+        "lat": 39.76636,
+        "lng": -98.9203
+      },
+      "distance": 46612,
+      "mapView": {
+        "west": -98.92268,
+        "south": 39.76636,
+        "east": -98.91791,
+        "north": 39.76638
+      },
+      "highlights": {
+        "title": [
+          {
+            "start": 0,
+            "end": 7
+          }
+        ],
+        "address": {
+          "label": [
+            {
+              "start": 0,
+              "end": 7
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "queryTerms": []
+}

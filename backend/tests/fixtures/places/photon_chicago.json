@@ -1,0 +1,245 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "osm_type": "R",
+        "osm_id": 122604,
+        "osm_key": "place",
+        "osm_value": "city",
+        "type": "city",
+        "name": "Chicago",
+        "county": "Cook County",
+        "state": "Illinois",
+        "country": "United States",
+        "countrycode": "US",
+        "extra": {
+          "admin_level": "8"
+        },
+        "extent": [
+          -87.9400876,
+          42.0230529,
+          -87.5241243,
+          41.644531
+        ]
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -87.6244212,
+          41.8755616
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "osm_type": "N",
+        "osm_id": 5349571275,
+        "osm_key": "railway",
+        "osm_value": "station",
+        "type": "house",
+        "housenumber": "300",
+        "name": "Chicago",
+        "street": "West Chicago Avenue",
+        "locality": "River North",
+        "district": "Near North Side",
+        "city": "Chicago",
+        "county": "Cook County",
+        "state": "IL",
+        "country": "United States",
+        "postcode": "60654",
+        "countrycode": "US"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -87.6356943,
+          41.8958413
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "osm_type": "N",
+        "osm_id": 736035818,
+        "osm_key": "railway",
+        "osm_value": "station",
+        "type": "house",
+        "housenumber": "800",
+        "name": "Chicago",
+        "street": "North Milwaukee Avenue",
+        "locality": "River West",
+        "district": "West Town",
+        "city": "Chicago",
+        "county": "Cook County",
+        "state": "IL",
+        "country": "United States",
+        "postcode": "60642",
+        "countrycode": "US"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -87.6553278,
+          41.8962116
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "osm_type": "N",
+        "osm_id": 1894033187,
+        "osm_key": "railway",
+        "osm_value": "station",
+        "type": "house",
+        "housenumber": "800",
+        "name": "Chicago",
+        "street": "North State Street",
+        "locality": "Gold Coast",
+        "district": "Near North Side",
+        "city": "Chicago",
+        "county": "Cook County",
+        "state": "IL",
+        "country": "United States",
+        "postcode": "60654",
+        "countrycode": "US"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -87.6281877,
+          41.8966356
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "osm_type": "R",
+        "osm_id": 126339,
+        "osm_key": "place",
+        "osm_value": "town",
+        "type": "city",
+        "name": "Chicago Heights",
+        "county": "Cook County",
+        "state": "Illinois",
+        "country": "United States",
+        "postcode": "60411",
+        "countrycode": "US",
+        "extra": {
+          "admin_level": "8"
+        },
+        "extent": [
+          -87.674425,
+          41.543357,
+          -87.59686,
+          41.48141
+        ]
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -87.6357079,
+          41.5062834
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "osm_type": "R",
+        "osm_id": 123144,
+        "osm_key": "place",
+        "osm_value": "town",
+        "type": "city",
+        "name": "Chicago Ridge",
+        "county": "Cook County",
+        "state": "Illinois",
+        "country": "United States",
+        "postcode": "60415",
+        "countrycode": "US",
+        "extra": {
+          "admin_level": "8"
+        },
+        "extent": [
+          -87.798492,
+          41.7205434,
+          -87.759223,
+          41.690395
+        ]
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -87.7792196,
+          41.7014217
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "osm_type": "W",
+        "osm_id": 1392247399,
+        "osm_key": "landuse",
+        "osm_value": "construction",
+        "type": "other",
+        "name": "Chicago Fire Stadium",
+        "locality": "South Loop",
+        "district": "Near South Side",
+        "city": "Chicago",
+        "county": "Cook County",
+        "state": "Illinois",
+        "country": "United States",
+        "countrycode": "US",
+        "extent": [
+          -87.6332834,
+          41.8661652,
+          -87.6306846,
+          41.8636894
+        ]
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -87.631998,
+          41.8650342
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "osm_type": "R",
+        "osm_id": 2192735,
+        "osm_key": "waterway",
+        "osm_value": "river",
+        "type": "other",
+        "name": "Chicago River",
+        "district": "Near North Side",
+        "city": "North Chicago Township",
+        "county": "Cook County",
+        "state": "Illinois",
+        "country": "United States",
+        "countrycode": "US",
+        "extent": [
+          -87.6377617,
+          41.8888887,
+          -87.6050545,
+          41.8863953
+        ]
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -87.6226207,
+          41.8888005
+        ]
+      }
+    }
+  ]
+}
