@@ -7,7 +7,7 @@ export function PlanNotices({ notices }: { notices: Notice[] }) {
   return (
     <Stack spacing={1}>
       {notices.map((notice) => (
-        <Alert key={notice.code} severity="info">
+        <Alert key={notice.code} severity="info" sx={{ alignItems: 'flex-start', borderRadius: 3 }}>
           {notice.message}
         </Alert>
       ))}

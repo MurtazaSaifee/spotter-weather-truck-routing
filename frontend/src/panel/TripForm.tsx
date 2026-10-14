@@ -1,6 +1,6 @@
-import { Button, Stack, Typography } from '@mui/material';
+import { Button, Skeleton, Stack, Typography } from '@mui/material';
 import type { Dayjs } from 'dayjs';
-import { type FormEvent, useMemo, useState } from 'react';
+import { type FormEvent, lazy, Suspense, useMemo, useState } from 'react';
 import type { PlanRequest } from '../api/plan';
 import type { Place } from '../api/places';
 import { useNow } from '../hooks/useNow';
@@ -12,9 +12,22 @@ import {
   toApiDeparture,
 } from '../trip/departure';
 import { parseWeight, weightError } from '../trip/weight';
-import { DeparturePicker } from './DeparturePicker';
 import { LoadWeightField } from './LoadWeightField';
 import { PlaceField } from './PlaceField';
+
+// The date-time picker stack is the biggest part of the form and the first paint does not
+// need it: the rest of the form shows at once and the picker follows.
+const DeparturePicker = lazy(() => import('./DeparturePicker'));
+
+/** The picker's height with its caption beneath, so nothing moves when it arrives. */
+function DeparturePickerPlaceholder() {
+  return (
+    <Stack aria-hidden="true">
+      <Skeleton variant="rounded" height={56} />
+      <Skeleton width="55%" height={20} sx={{ mt: 0.5, ml: 1.75 }} />
+    </Stack>
+  );
+}
 
 interface TripFormProps {
   origin: Place | null;
@@ -84,13 +97,15 @@ export function TripForm({
         onChange={onDestinationChange}
         error={sameAsOrigin ? 'Destination must be different from the origin.' : undefined}
       />
-      <DeparturePicker
-        value={departure}
-        onChange={setPicked}
-        timeZone={zone}
-        zoneSource={origin ? 'origin' : 'browser'}
-        nowMs={nowMs}
-      />
+      <Suspense fallback={<DeparturePickerPlaceholder />}>
+        <DeparturePicker
+          value={departure}
+          onChange={setPicked}
+          timeZone={zone}
+          zoneSource={origin ? 'origin' : 'browser'}
+          nowMs={nowMs}
+        />
+      </Suspense>
       <LoadWeightField text={weightText} onTextChange={setWeightText} />
       <Button type="submit" variant="contained" size="large" disabled={!isValid || isPlanning}>
         Plan trip
