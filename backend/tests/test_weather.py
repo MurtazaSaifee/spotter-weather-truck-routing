@@ -357,6 +357,25 @@ def test_an_open_meteo_failure_is_weather_unavailable(client, outbound_http, ope
     assert response.json()["code"] == "weather_unavailable"
 
 
+@pytest.mark.parametrize(
+    "variables",
+    [["wind_speed_10m"], ["wind_gusts_10m"], ["rain", "showers"], ["snowfall"]],
+    ids=["wind", "gusts", "rain", "snow"],
+)
+def test_a_series_shorter_than_the_time_array_is_weather_unavailable(
+    client, outbound_http, open_meteo, variables
+):
+    hundred_mile_route(outbound_http)
+    for location in open_meteo.recording:
+        for variable in variables:
+            location["hourly"][variable].pop()
+
+    response = post_plan(client)
+
+    assert response.status_code == 503
+    assert response.json()["code"] == "weather_unavailable"
+
+
 def test_a_failed_forecast_is_not_cached(client, outbound_http, open_meteo):
     hundred_mile_route(outbound_http)
     open_meteo.route.side_effect = httpx.ConnectError("down")

@@ -157,7 +157,7 @@ def _coordinates(place: dict) -> tuple[float, float]:
 
 
 class NoticeSerializer(serializers.Serializer):
-    code = serializers.CharField(help_text="Machine-readable, e.g. `fewer_routes`.")
+    code = serializers.CharField(help_text="Machine-readable, e.g. `fewer_than_three_routes`.")
     message = serializers.CharField(help_text="Text to show the driver.")
 
 

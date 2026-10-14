@@ -263,8 +263,10 @@ def _parse_series(hourly: dict[str, list[Any]]) -> Series:
         rain=_scaled(rain, _PRECIPITATION_SCALE),
         snow=_scaled(hourly["snowfall"], _PRECIPITATION_SCALE),
     )
-    lengths = {len(hourly["time"]), len(series.wind), len(series.gusts), len(series.snow)}
-    if len(lengths) != 1:
+    if any(
+        len(values) != len(hourly["time"])
+        for values in (series.wind, series.gusts, series.rain, series.snow)
+    ):
         raise ValueError("Open-Meteo's series differ in length")
     return series
 
