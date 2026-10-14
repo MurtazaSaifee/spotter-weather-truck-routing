@@ -26,6 +26,7 @@ from django.core.cache import cache
 
 from .errors import ApiError
 from .geo import (
+    METRES_PER_MILE,
     Point,
     RouteIndex,
     bearing_deg,
@@ -49,7 +50,7 @@ MAX_ROUTES = 3
 
 # Two routes are near-duplicates when this share of the shorter route's samples (one every
 # mile) lies within the radius of the other.
-SAMPLE_STEP_M = 1609.344
+SAMPLE_STEP_M = METRES_PER_MILE
 NEAR_DUPLICATE_RADIUS_M = 500
 NEAR_DUPLICATE_SHARE = 0.9
 

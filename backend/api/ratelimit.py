@@ -105,6 +105,11 @@ class RateLimit(BaseThrottle):
         return True
 
 
+def limit_text(scope: str) -> str:
+    """The limit for ``scope`` as the API docs say it, read from the setting that enforces it."""
+    return f"Limited to {settings.RATE_LIMITS[scope]} requests per visitor per hour."
+
+
 class PlanRateLimit(RateLimit):
     scope = "plan"
 

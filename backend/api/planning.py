@@ -23,8 +23,8 @@ from threading import Event
 from zoneinfo import ZoneInfo
 
 from . import heatmap, places, risk, routing, weather
-from .checkpoints import METRES_PER_MILE, RouteProfile, automatic_interval
-from .geo import Point, decode_polyline, encode_polyline, simplify
+from .checkpoints import RouteProfile, automatic_interval
+from .geo import METRES_PER_MILE, Point, decode_polyline, encode_polyline, simplify
 from .risk import (
     Classification,
     RankedRoute,

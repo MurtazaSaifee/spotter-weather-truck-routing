@@ -7,7 +7,8 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from . import places, planning
-from .ratelimit import PlanRateLimit, SuggestionRateLimit
+from .ratelimit import PlanRateLimit, SuggestionRateLimit, limit_text
+from .risk import AVERAGE_RISK_TOLERANCE
 from .schema_examples import (
     PLAN_400,
     PLAN_422,
@@ -71,7 +72,7 @@ class PlaceSuggestionsView(APIView):
             f"Up to {places.MAX_SUGGESTIONS} suggestions from HERE Autosuggest, limited to the "
             "United States, Canada and Mexico. If HERE fails, Photon answers in the same shape; "
             "`provider` says which one did. Each suggestion carries the IANA time zone at its "
-            "coordinates, resolved offline. Limited to 300 requests per visitor per hour."
+            f"coordinates, resolved offline. {limit_text('suggest')}"
         ),
         parameters=[PlaceSuggestionQuerySerializer],
         examples=[SUGGEST_OK],
@@ -101,8 +102,8 @@ class PlanView(APIView):
             "expected at departure. Every route has checkpoints at the chosen interval, each "
             "with the truck's ETA, the forecast for that hour and a risk level for the load. "
             "Routes are ranked (fewest Severe miles, fewest High miles, lowest average risk "
-            "within 0.25, shortest time) and one is recommended unless every route is blocked "
-            "by a No Travel checkpoint. Limited to 60 requests per visitor per hour."
+            f"within {AVERAGE_RISK_TOLERANCE}, shortest time) and one is recommended unless "
+            f"every route is blocked by a No Travel checkpoint. {limit_text('plan')}"
         ),
         request=PlanRequestSerializer,
         examples=[PLAN_REQUEST, PLAN_OK],

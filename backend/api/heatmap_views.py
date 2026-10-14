@@ -11,7 +11,7 @@ from rest_framework.views import APIView
 
 from . import heatmap
 from .geo import Point, decode_polyline
-from .ratelimit import HeatmapRateLimit
+from .ratelimit import HeatmapRateLimit, limit_text
 from .schema_examples import (
     HEATMAP_400,
     HEATMAP_503,
@@ -29,6 +29,7 @@ from .serializers import (
     departure_window_text,
 )
 
+FRAME_SPAN_HOURS = heatmap.FRAME_HOURS - 1  # the frames run from the departure to this far on
 MAX_GEOMETRIES = 3
 # Routes are simplified to about 100 m before they reach the browser: a coast-to-coast one is
 # a few thousand vertices. An encoded vertex takes a handful of characters.
@@ -50,9 +51,9 @@ class HeatmapRequestSerializer(serializers.Serializer):
     departure = OffsetDateTimeField(
         help_text=(
             "When the truck leaves, as ISO-8601 with a UTC offset. "
-            f"{departure_window_text(HEATMAP_DEPARTURE_GRACE)}: the plan's departure is "
+            f"From {departure_window_text(HEATMAP_DEPARTURE_GRACE)}: the plan's departure is "
             "sent again, possibly after a wait, so this takes a longer delay than the plan. "
-            "The frames run from here to 48 hours after."
+            f"The frames run from here to {FRAME_SPAN_HOURS} hours after."
         )
     )
     load_weight_lb = LoadWeightField()
@@ -133,7 +134,10 @@ class HeatmapSerializer(serializers.Serializer):
     )
     timestamps = serializers.ListField(
         child=OffsetDateTimeField(),
-        help_text="The time of each frame: the departure, then every hour to 48 hours later.",
+        help_text=(
+            "The time of each frame: the departure, then every hour to "
+            f"{FRAME_SPAN_HOURS} hours later."
+        ),
     )
     scales = ScalesSerializer(help_text="What one unit of each variable's integers is worth.")
     frames = FramesSerializer()
@@ -145,11 +149,12 @@ class HeatmapView(APIView):
     @extend_schema(
         summary="Weather heatmap over the routes on screen",
         description=(
-            "The forecast and its risk, hour by hour for 48 hours after departure, at points "
-            "up to 25 miles either side of the given routes. Built only from the geometries "
-            "sent: the routing provider is never asked. Returned as a regular grid with the "
-            "indices of the points inside the corridor, and one list of whole numbers per "
-            "variable per hour. Limited to 60 requests per visitor per hour."
+            f"The forecast and its risk, hour by hour for {FRAME_SPAN_HOURS} hours after "
+            f"departure, at points up to {heatmap.CORRIDOR_RADIUS_MILES} miles either side of "
+            "the given routes. Built only from the geometries sent: the routing provider is "
+            "never asked. Returned as a regular grid with the indices of the points inside the "
+            "corridor, and "
+            f"one list of whole numbers per variable per hour. {limit_text('heatmap')}"
         ),
         request=HeatmapRequestSerializer,
         examples=[HEATMAP_REQUEST, HEATMAP_OK],

@@ -7,7 +7,14 @@ from the code unnoticed.
 
 from drf_spectacular.utils import OpenApiExample, OpenApiResponse
 
-from .serializers import ErrorSerializer
+from .checkpoints import INTERVAL_CHOICES
+from .serializers import (
+    DEPARTURE_HORIZON,
+    MAX_LOAD_WEIGHT_LB,
+    ErrorSerializer,
+    departure_window_text,
+    duration_text,
+)
 
 
 def error_response(description: str, *examples: OpenApiExample) -> OpenApiResponse:
@@ -291,17 +298,20 @@ PLAN_OK = OpenApiExample(
     response_only=True,
     status_codes=["200"],
 )
+_INTERVALS = ", ".join(map(str, INTERVAL_CHOICES[:-1])) + f" or {INTERVAL_CHOICES[-1]}"
+_TOO_FAR_AHEAD = f"Departure can't be more than {duration_text(DEPARTURE_HORIZON)} ahead."
 PLAN_400 = error_response(
     "`validation_error`: a field is missing or invalid, and `details.fields` names each one. "
-    "Examples: a departure without a UTC offset or outside the window (15 minutes ago to 48 "
-    "hours ahead), a place outside North America, the same origin and destination, a load "
-    "weight outside 1 to 50,000 lb, or an interval other than 10, 25 or 50.",
+    "Examples: a departure without a UTC offset or outside the window "
+    f"({departure_window_text()}), a place outside North America, the same origin "
+    f"and destination, a load weight outside 1 to {MAX_LOAD_WEIGHT_LB:,} lb, or an interval "
+    f"other than {_INTERVALS}.",
     _error_example(
         "Departure too far ahead",
         "validation_error",
-        "departure: Departure can't be more than 48 hours ahead.",
+        f"departure: {_TOO_FAR_AHEAD}",
         "400",
-        {"fields": {"departure": ["Departure can't be more than 48 hours ahead."]}},
+        {"fields": {"departure": [_TOO_FAR_AHEAD]}},
     ),
 )
 PLAN_422 = error_response(

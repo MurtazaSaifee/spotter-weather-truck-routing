@@ -10,6 +10,7 @@ from itertools import pairwise
 Point = tuple[float, float]
 
 EARTH_RADIUS_M = 6_371_008.8
+METRES_PER_MILE = 1609.344
 METRES_PER_DEGREE = math.pi * EARTH_RADIUS_M / 180
 
 # Google's encoded polyline format, which the browser decodes. Five decimals is about 1 m.

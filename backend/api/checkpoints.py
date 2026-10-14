@@ -9,12 +9,12 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from fractions import Fraction
 
-from .geo import Point, haversine_m
+from .geo import METRES_PER_MILE, Point, haversine_m
 from .routing import Span
 
-METRES_PER_MILE = 1609.344
 # Exact metres per mile as a fraction, so the tier edges below are not at the mercy of floats.
-_METRES_PER_MILE = Fraction(1_609_344, 1_000)
+# Going through the text gives the decimal as written (1609.344), not its float approximation.
+_METRES_PER_MILE = Fraction(str(METRES_PER_MILE))
 
 INTERVAL_CHOICES = (10, 25, 50)
 # Trips shorter than this get the finest interval, trips up to the next one the middle one,

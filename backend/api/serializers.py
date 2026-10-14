@@ -6,7 +6,7 @@ from django.utils import timezone
 from rest_framework import serializers
 
 from .checkpoints import INTERVAL_CHOICES
-from .risk import CONDITIONS, Criterion, Level
+from .risk import AVERAGE_RISK_TOLERANCE, CONDITIONS, Criterion, Level
 from .routing import TripRequest
 
 # A box around the US, Canada and Mexico, as (south, north) and (west, east). It also takes in a
@@ -68,8 +68,8 @@ def duration_text(span: timedelta) -> str:
 
 
 def departure_window_text(grace: timedelta = DEPARTURE_GRACE) -> str:
-    """The departure window as the help texts say it: ``From 15 minutes ago to 48 hours ahead``."""
-    return f"From {duration_text(grace)} ago to {duration_text(DEPARTURE_HORIZON)} ahead"
+    """The departure window as the help texts say it: ``15 minutes ago to 48 hours ahead``."""
+    return f"{duration_text(grace)} ago to {duration_text(DEPARTURE_HORIZON)} ahead"
 
 
 def check_departure_window(value: datetime, grace: timedelta = DEPARTURE_GRACE) -> datetime:
@@ -111,7 +111,7 @@ class PlanRequestSerializer(serializers.Serializer):
     destination = TripPlaceSerializer()
     departure = OffsetDateTimeField(
         help_text=(
-            f"When the truck leaves, as ISO-8601 with a UTC offset. {departure_window_text()}."
+            f"When the truck leaves, as ISO-8601 with a UTC offset. From {departure_window_text()}."
         )
     )
     load_weight_lb = LoadWeightField()
@@ -329,7 +329,7 @@ class DecidingSerializer(serializers.Serializer):
         allow_null=True,
         help_text=(
             "For `average_risk` only: the lowest average risk of the routes still in the "
-            "running, which the 0.25 tolerance is measured from."
+            f"running, which the {AVERAGE_RISK_TOLERANCE} tolerance is measured from."
         ),
     )
 
