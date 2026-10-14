@@ -1,6 +1,6 @@
 from typing import ClassVar
 
-from drf_spectacular.utils import OpenApiResponse, extend_schema
+from drf_spectacular.utils import extend_schema
 from rest_framework import serializers
 from rest_framework.request import Request
 from rest_framework.response import Response
@@ -8,12 +8,19 @@ from rest_framework.views import APIView
 
 from . import places, planning
 from .ratelimit import PlanRateLimit, SuggestionRateLimit
-from .serializers import ErrorSerializer, PlanRequestSerializer, PlanSerializer
-
-RATE_LIMIT_EXCEEDED_DESCRIPTION = (
-    "`rate_limit_exceeded`: this visitor's hourly allowance is used up. "
-    "`details.retry_after_seconds` says when it resets."
+from .schema_examples import (
+    PLAN_400,
+    PLAN_422,
+    PLAN_503,
+    PLAN_OK,
+    PLAN_REQUEST,
+    RATE_LIMIT_429,
+    RATE_LIMIT_429_SUGGEST,
+    SUGGEST_400,
+    SUGGEST_503,
+    SUGGEST_OK,
 )
+from .serializers import PlanRequestSerializer, PlanSerializer
 
 
 class HealthSerializer(serializers.Serializer):
@@ -21,7 +28,14 @@ class HealthSerializer(serializers.Serializer):
 
 
 class HealthView(APIView):
-    @extend_schema(summary="Service health", responses=HealthSerializer)
+    @extend_schema(
+        summary="Service health",
+        description=(
+            'Answers `{"status": "ok"}` without calling any provider or the cache. '
+            "For uptime checks and the keep-warm ping."
+        ),
+        responses=HealthSerializer,
+    )
     def get(self, request: Request) -> Response:
         return Response({"status": "ok"})
 
@@ -54,13 +68,18 @@ class PlaceSuggestionsView(APIView):
     @extend_schema(
         summary="Suggest North American places",
         description=(
-            f"Up to {places.MAX_SUGGESTIONS} suggestions from HERE Autosuggest. If HERE fails, "
-            "Photon answers in the same shape."
+            f"Up to {places.MAX_SUGGESTIONS} suggestions from HERE Autosuggest, limited to the "
+            "United States, Canada and Mexico. If HERE fails, Photon answers in the same shape; "
+            "`provider` says which one did. Each suggestion carries the IANA time zone at its "
+            "coordinates, resolved offline. Limited to 300 requests per visitor per hour."
         ),
         parameters=[PlaceSuggestionQuerySerializer],
+        examples=[SUGGEST_OK],
         responses={
             200: PlaceSuggestionsSerializer,
-            429: OpenApiResponse(ErrorSerializer, description=RATE_LIMIT_EXCEEDED_DESCRIPTION),
+            400: SUGGEST_400,
+            429: RATE_LIMIT_429_SUGGEST,
+            503: SUGGEST_503,
         },
     )
     def get(self, request: Request) -> Response:
@@ -77,26 +96,22 @@ class PlanView(APIView):
     @extend_schema(
         summary="Plan a truck trip",
         description=(
-            "Up to three truck routes between two North American places, with travel times "
-            "that account for the truck's weight and the traffic expected at departure, and "
-            "the forecast at every checkpoint for the hour the truck gets there."
+            "Up to three distinct truck routes between two North American places, fastest "
+            "first, with travel times that account for the truck's weight and the traffic "
+            "expected at departure. Every route has checkpoints at the chosen interval, each "
+            "with the truck's ETA, the forecast for that hour and a risk level for the load. "
+            "Routes are ranked (fewest Severe miles, fewest High miles, lowest average risk "
+            "within 0.25, shortest time) and one is recommended unless every route is blocked "
+            "by a No Travel checkpoint. Limited to 60 requests per visitor per hour."
         ),
         request=PlanRequestSerializer,
+        examples=[PLAN_REQUEST, PLAN_OK],
         responses={
             200: PlanSerializer,
-            400: OpenApiResponse(ErrorSerializer, description="`validation_error`"),
-            422: OpenApiResponse(ErrorSerializer, description="`no_route_found`"),
-            429: OpenApiResponse(
-                ErrorSerializer,
-                description=(
-                    "`weather_rate_limited` (the weather service is limiting requests) or "
-                    "`rate_limit_exceeded` (this visitor's hourly allowance is used up). "
-                    "`details.retry_after_seconds` says how long to wait."
-                ),
-            ),
-            503: OpenApiResponse(
-                ErrorSerializer, description="`routing_unavailable` or `weather_unavailable`"
-            ),
+            400: PLAN_400,
+            422: PLAN_422,
+            429: RATE_LIMIT_429,
+            503: PLAN_503,
         },
     )
     def post(self, request: Request) -> Response:
