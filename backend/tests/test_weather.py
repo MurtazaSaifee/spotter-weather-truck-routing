@@ -6,6 +6,8 @@ to the minute and the weather it should read can be worked out by hand.
 """
 
 import logging
+import threading
+import time
 from datetime import UTC, datetime, timedelta
 from urllib.parse import parse_qs
 
@@ -444,6 +446,32 @@ def test_no_place_is_asked_for_twice_while_planning(client, outbound_http, open_
 
     asked = lattice_points_requested(open_meteo)
     assert len(asked) == len(set(asked))
+
+
+def test_a_failing_plan_does_not_wait_for_the_heatmap_head_start(client, outbound_http, open_meteo):
+    hundred_mile_route(outbound_http)
+    corridor_requested = threading.Event()
+    release_corridor = threading.Event()
+
+    def respond(request):
+        asked = len(parse_qs(request.content.decode())["latitude"][0].split(","))
+        if asked > 5:  # the heatmap's head start: slow, and in flight when the plan fails
+            corridor_requested.set()
+            release_corridor.wait(timeout=10)
+            return httpx.Response(429, headers={"Retry-After": "60"})
+        corridor_requested.wait(timeout=10)
+        return httpx.Response(429, headers={"Retry-After": "7"})
+
+    open_meteo.route.side_effect = respond
+
+    started = time.monotonic()
+    response = post_plan(client)
+    waited = time.monotonic() - started
+    release_corridor.set()
+
+    assert response.status_code == 429
+    assert response.json()["details"] == {"retry_after_seconds": 7}
+    assert waited < 3
 
 
 def test_a_plan_is_not_held_back_by_a_heatmap_head_start_that_fails(

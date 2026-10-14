@@ -19,6 +19,7 @@ import logging
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field, replace
 from datetime import datetime, timedelta
+from threading import Event
 from zoneinfo import ZoneInfo
 
 from . import heatmap, places, risk, routing, weather
@@ -129,13 +130,24 @@ def _with_weather(
     """``routes`` with the forecast at each checkpoint, for the hour the truck is there, and
     the risk that forecast means for a truck carrying ``load_weight_lb``."""
     checkpoints = [checkpoint for route in routes for checkpoint in route.checkpoints]
-    with ThreadPoolExecutor(max_workers=1) as pool:
-        # Leaving the block waits for the warm-up, so it is done before the response goes out.
-        points = [(checkpoint.lat, checkpoint.lng) for checkpoint in checkpoints]
-        pool.submit(_warm_heatmap, [route.geometry for route in routes], departure, points)
+    points = [(checkpoint.lat, checkpoint.lng) for checkpoint in checkpoints]
+    abandoned = Event()
+    pool = ThreadPoolExecutor(max_workers=1)
+    try:
+        pool.submit(
+            _warm_heatmap, [route.geometry for route in routes], departure, points, abandoned
+        )
         forecast = weather.load_forecast(
             points=points, times=[checkpoint.eta for checkpoint in checkpoints]
         )
+    except BaseException:
+        # The plan has failed, so the heatmap will not be asked for: don't hold the error back
+        # for the warm-up, and don't start it against a provider that is failing or limiting us.
+        abandoned.set()
+        pool.shutdown(wait=False, cancel_futures=True)
+        raise
+    # The warm-up is done before the response goes out: a Cloud Run instance gets no CPU after.
+    pool.shutdown(wait=True)
 
     def forecast_at(checkpoint: PlannedCheckpoint) -> PlannedCheckpoint:
         conditions = forecast.conditions_at((checkpoint.lat, checkpoint.lng), checkpoint.eta)
@@ -158,7 +170,9 @@ def _with_weather(
     ]
 
 
-def _warm_heatmap(geometries: list[str], departure: datetime, checkpoints: list[Point]) -> None:
+def _warm_heatmap(
+    geometries: list[str], departure: datetime, checkpoints: list[Point], abandoned: Event
+) -> None:
     """Load the forecast of the heatmap the browser will ask for once it has this plan.
 
     The heatmap is built from the routes' geometries, which are the plan's, so its corridor is
@@ -166,8 +180,11 @@ def _warm_heatmap(geometries: list[str], departure: datetime, checkpoints: list[
     itself) in a second request, made while the first is under way, leaves the heatmap with
     nothing to wait for but the cache. It has to be done inside the request: a Cloud Run
     instance gets no CPU once it has responded. A failure here costs the heatmap its head
-    start and nothing more, so it is only logged.
+    start and nothing more, so it is only logged. It does nothing if the plan has already
+    failed (``abandoned``).
     """
+    if abandoned.is_set():
+        return
     try:
         routes: list[list[Point]] = [decode_polyline(geometry) for geometry in geometries]
         heatmap.warm_forecast(routes, departure, loading_elsewhere=checkpoints)
