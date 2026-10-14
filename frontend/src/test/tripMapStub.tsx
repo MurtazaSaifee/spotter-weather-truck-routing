@@ -12,6 +12,7 @@ interface TripMapStubProps {
   heatmap: Heatmap | null;
   timeZone: string | null;
   selectedRouteId: string | null;
+  recommendedRouteId: string | null;
   onSelectRoute: (id: string) => void;
 }
 
@@ -31,6 +32,7 @@ export default function TripMapStub({
   heatmap,
   timeZone,
   selectedRouteId,
+  recommendedRouteId,
   onSelectRoute,
 }: TripMapStubProps) {
   const layer = useHeatmapLayer();
@@ -52,6 +54,8 @@ export default function TripMapStub({
             type="button"
             aria-label={`Route ${index + 1} on map`}
             aria-pressed={route.id === selectedRouteId}
+            data-recommended={route.id === recommendedRouteId}
+            data-blocked={route.blocked}
             onClick={() => onSelectRoute(route.id)}
           >
             {route.geometry}

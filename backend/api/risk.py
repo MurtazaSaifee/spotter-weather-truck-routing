@@ -13,8 +13,10 @@ Reading decisions (the README repeats them):
 """
 
 from bisect import bisect_right
+from collections import defaultdict
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass
-from enum import IntEnum
+from enum import IntEnum, StrEnum
 
 # Where each band starts, from Moderate up. A value at an edge is already in the band above it,
 # which is what ``bisect_right`` gives.
@@ -132,3 +134,241 @@ def _gust_warning(gust_mph: float | None, sustained: Level, load_lb: float) -> G
     if level >= Level.HIGH and level > sustained:
         return GustWarning(gust_mph, level)
     return None
+
+
+# --- Ranking routes ----------------------------------------------------------------------------
+#
+# Reading decisions for the recommendation (the README repeats them):
+#
+# - Eligible routes (no No Travel checkpoint) always rank above blocked ones; blocked routes are
+#   ordered by fewest No Travel miles, then by the same criteria.
+# - Severe and High miles are compared exactly after rounding to 0.1 mi.
+# - Average risk keeps every route within ``AVERAGE_RISK_TOLERANCE`` of the best one (exactly
+#   0.25 away is still within it) and travel time decides among them. The winner ranks first and
+#   the procedure repeats on the rest, so the order is the same whatever order routes come in.
+#   A pairwise "close enough" would not be transitive.
+# - A route with nothing assessed has no average risk; it is never kept at the average-risk step
+#   while any other route has one, so missing data is not rewarded.
+# - Whatever ties through every criterion keeps the order the routes came in.
+# - A route's deciding criterion is the step at which the winner's selection dropped it. That is
+#   the first criterion separating it from the recommendation, except that a route dropped at
+#   the average-risk step can be within 0.25 of the winner itself (and even faster); it is out
+#   because it is more than 0.25 above the best route, whose value is reported with it.
+
+# The largest gap in average risk that still counts as a tie.
+AVERAGE_RISK_TOLERANCE = 0.25
+MILES_DECIMALS = 1
+# Float slack, so a gap that is 0.25 on paper is not lost to representation error.
+_TOLERANCE_SLACK = 1e-9
+
+
+class Criterion(StrEnum):
+    """What separated a route from the recommendation, in the order the criteria apply."""
+
+    BLOCKED = "blocked"
+    SEVERE_MILES = "severe_miles"
+    HIGH_MILES = "high_miles"
+    AVERAGE_RISK = "average_risk"
+    TRAVEL_TIME = "travel_time"
+
+
+@dataclass(frozen=True)
+class RouteAssessment:
+    """What the ranking sees of a route: miles at each level, average risk and travel time."""
+
+    route_id: str
+    # Covered miles of the checkpoints at each assessed level (a missing level is 0 mi).
+    miles: Mapping[Level, float]
+    # Covered miles of the No data checkpoints.
+    unassessed_miles: float
+    # The covered-miles-weighted mean of the assessed scores; ``None`` if nothing was assessed.
+    average_risk: float | None
+    travel_time_s: int
+
+    @property
+    def low_miles(self) -> float:
+        return self.miles.get(Level.LOW, 0.0)
+
+    @property
+    def moderate_miles(self) -> float:
+        return self.miles.get(Level.MODERATE, 0.0)
+
+    @property
+    def high_miles(self) -> float:
+        return self.miles.get(Level.HIGH, 0.0)
+
+    @property
+    def severe_miles(self) -> float:
+        return self.miles.get(Level.SEVERE, 0.0)
+
+    @property
+    def no_travel_miles(self) -> float:
+        return self.miles.get(Level.NO_TRAVEL, 0.0)
+
+    @property
+    def blocked(self) -> bool:
+        """Any No Travel checkpoint blocks the route."""
+        return self.no_travel_miles > 0
+
+
+def assess_route(
+    route_id: str,
+    *,
+    travel_time_s: int,
+    checkpoints: Iterable[tuple[float, Classification]],
+) -> RouteAssessment:
+    """A route's risk mileage and average risk from its checkpoints, each given as the miles it
+    covers and its classification. No data checkpoints count as unassessed miles only."""
+    miles: dict[Level, float] = defaultdict(float)
+    unassessed = 0.0
+    weighted_score = 0.0
+    assessed = 0.0
+    for covered_miles, classification in checkpoints:
+        if classification.level is None or classification.score is None:
+            unassessed += covered_miles
+            continue
+        miles[classification.level] += covered_miles
+        weighted_score += classification.score * covered_miles
+        assessed += covered_miles
+    return RouteAssessment(
+        route_id=route_id,
+        miles=dict(miles),
+        unassessed_miles=unassessed,
+        average_risk=weighted_score / assessed if assessed else None,
+        travel_time_s=travel_time_s,
+    )
+
+
+@dataclass(frozen=True)
+class Decider:
+    """Why the recommendation beat one alternative, with both values.
+
+    Miles are rounded to 0.1, the average risk is as computed and the time is in seconds. For
+    ``BLOCKED`` the values are the No Travel miles. ``best_average_risk`` is set only for
+    ``AVERAGE_RISK``: the lowest in the field, which the tolerance is measured from.
+    """
+
+    criterion: Criterion
+    recommended_value: float | None
+    alternative_value: float | None
+    best_average_risk: float | None = None
+
+
+@dataclass(frozen=True)
+class RankedRoute:
+    route_id: str
+    rank: int
+    blocked: bool
+    # Against the recommended route; ``None`` for it and when nothing is recommended.
+    deciding: Decider | None
+
+
+@dataclass(frozen=True)
+class Ranking:
+    routes: list[RankedRoute]  # best first
+    recommended_id: str | None
+
+    @property
+    def all_blocked(self) -> bool:
+        return bool(self.routes) and self.recommended_id is None
+
+
+def rank_routes(assessments: Sequence[RouteAssessment]) -> Ranking:
+    """Order routes best first and recommend the first if it is eligible."""
+    remaining_eligible = [a for a in assessments if not a.blocked]
+    remaining_blocked = [a for a in assessments if a.blocked]
+    ordered: list[RouteAssessment] = []
+    deciding: dict[str, Decider] = {}
+
+    first_round = True
+    while remaining_eligible:
+        winner, dropped = _winner(remaining_eligible, by_no_travel_first=False)
+        if first_round:
+            deciding = dropped
+            first_round = False
+        ordered.append(winner)
+        remaining_eligible.remove(winner)
+    recommended = ordered[0] if ordered else None
+
+    while remaining_blocked:
+        winner, _ = _winner(remaining_blocked, by_no_travel_first=True)
+        ordered.append(winner)
+        remaining_blocked.remove(winner)
+    if recommended:
+        for assessment in ordered:
+            if assessment.blocked:
+                deciding[assessment.route_id] = Decider(
+                    Criterion.BLOCKED, 0.0, _tenth(assessment.no_travel_miles)
+                )
+
+    return Ranking(
+        routes=[
+            RankedRoute(a.route_id, rank, a.blocked, deciding.get(a.route_id))
+            for rank, a in enumerate(ordered, start=1)
+        ],
+        recommended_id=recommended.route_id if recommended else None,
+    )
+
+
+def _tenth(miles: float) -> float:
+    return round(miles, MILES_DECIMALS)
+
+
+# The value each criterion compares: miles to a tenth, average risk as it is, time in seconds.
+_VALUES: dict[Criterion, Callable[[RouteAssessment], float | None]] = {
+    Criterion.BLOCKED: lambda a: _tenth(a.no_travel_miles),
+    Criterion.SEVERE_MILES: lambda a: _tenth(a.severe_miles),
+    Criterion.HIGH_MILES: lambda a: _tenth(a.high_miles),
+    Criterion.AVERAGE_RISK: lambda a: a.average_risk,
+    Criterion.TRAVEL_TIME: lambda a: a.travel_time_s,
+}
+# The criteria that keep only the routes equal to the best.
+_EXACT_CRITERIA = (Criterion.SEVERE_MILES, Criterion.HIGH_MILES)
+
+
+def _winner(
+    pool: Sequence[RouteAssessment], *, by_no_travel_first: bool
+) -> tuple[RouteAssessment, dict[str, Decider]]:
+    """The best of ``pool``, and for each other route why the selection dropped it."""
+    survivors = list(pool)
+    # Route id -> (criterion it was dropped at, best average risk if that was the criterion).
+    dropped: dict[str, tuple[Criterion, float | None]] = {}
+
+    def keep_only(kept: list[RouteAssessment], criterion: Criterion, best: float | None = None):
+        kept_ids = {a.route_id for a in kept}
+        for assessment in survivors:
+            if assessment.route_id not in kept_ids:
+                dropped[assessment.route_id] = (criterion, best)
+        return kept
+
+    exact = (Criterion.BLOCKED, *_EXACT_CRITERIA) if by_no_travel_first else _EXACT_CRITERIA
+    for criterion in exact:
+        value = _VALUES[criterion]
+        best = min(value(a) for a in survivors)  # type: ignore[type-var]
+        survivors = keep_only([a for a in survivors if value(a) == best], criterion)
+
+    assessed = [a.average_risk for a in survivors if a.average_risk is not None]
+    if assessed:
+        best_average = min(assessed)
+        within = [
+            a
+            for a in survivors
+            if a.average_risk is not None
+            and a.average_risk <= best_average + AVERAGE_RISK_TOLERANCE + _TOLERANCE_SLACK
+        ]
+        survivors = keep_only(within, Criterion.AVERAGE_RISK, best_average)
+
+    # ``min`` takes the first of equals: routes tied on everything keep their order.
+    winner = min(survivors, key=lambda a: a.travel_time_s)
+    keep_only([winner], Criterion.TRAVEL_TIME)
+
+    by_id = {a.route_id: a for a in pool}
+    return winner, {
+        route_id: Decider(
+            criterion,
+            _VALUES[criterion](winner),
+            _VALUES[criterion](by_id[route_id]),
+            best_average,
+        )
+        for route_id, (criterion, best_average) in dropped.items()
+    }

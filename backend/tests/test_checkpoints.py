@@ -42,21 +42,21 @@ def here(outbound_http, load_fixture):
     return route
 
 
-def straight_route(*spans, geometry_scale=1.0):
-    """A HERE answer for one route running due north from 40.0N 90.0W.
+def straight_route(*spans, geometry_scale=1.0, longitude=-90.0):
+    """A HERE answer for one route running due north from 40.0N along ``longitude`` (90.0W).
 
     Each span is ``(length_m, duration_s)`` or ``(length_m, duration_s, segments)``: how far
     the span goes, how long it takes, and how many line segments its polyline has. The
     polyline covers ``geometry_scale`` times each span's length.
     """
-    points = [(40.0, -90.0)]
+    points = [(40.0, longitude)]
     offsets = []
     for length_m, _duration_s, *rest in spans:
         segments = rest[0] if rest else 4
         offsets.append(len(points) - 1)
         step = length_m * geometry_scale / METRES_PER_DEGREE / segments
         for _ in range(segments):
-            points.append((points[-1][0] + step, -90.0))
+            points.append((points[-1][0] + step, longitude))
     return {
         "id": "straight",
         "sections": [

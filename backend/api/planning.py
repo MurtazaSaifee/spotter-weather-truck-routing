@@ -9,6 +9,8 @@ place each:
   as checkpoints are added to ``PlannedRoute`` and filled in here);
 - the forecast for every route's checkpoints is loaded in one go, so places the routes share
   are looked up once;
+- the routes are assessed from their checkpoints' risk and ranked (``risk.rank_routes``), which
+  gives the recommendation;
 - ``notices`` collects plan-level messages for the driver.
 """
 
@@ -19,7 +21,14 @@ from zoneinfo import ZoneInfo
 from . import places, risk, routing, weather
 from .checkpoints import METRES_PER_MILE, RouteProfile, automatic_interval
 from .geo import encode_polyline, simplify
-from .risk import Classification
+from .risk import (
+    Classification,
+    RankedRoute,
+    Ranking,
+    RouteAssessment,
+    assess_route,
+    rank_routes,
+)
 from .routing import Route, TripRequest
 from .weather import Conditions
 
@@ -61,6 +70,10 @@ class PlannedRoute:
     # Seconds after departure at each vertex of ``geometry``.
     elapsed_seconds: list[int]
     checkpoints: list[PlannedCheckpoint]
+    # Risk mileage and average risk from the checkpoints, and where the route ranks. Filled in
+    # once every checkpoint has its risk.
+    assessment: RouteAssessment | None = None
+    ranked: RankedRoute | None = None
 
 
 @dataclass
@@ -70,6 +83,9 @@ class Plan:
     interval_miles: int
     interval_automatic: bool
     routes: list[PlannedRoute]
+    # The route to take, or ``None`` when every route is blocked by No Travel.
+    recommended_route_id: str | None = None
+    all_blocked_warning: Notice | None = None
     notices: list[Notice] = field(default_factory=list)
 
 
@@ -85,12 +101,17 @@ def plan_trip(trip: TripRequest, interval_miles: int | None = None) -> Plan:
     if len(routes) < routing.MAX_ROUTES:
         notices.append(_fewer_routes_notice(len(routes)))
     planned = [_plan_route(route, trip, time_zone, interval_miles) for route in routes]
+    ranked_routes, ranking = _ranked(_with_weather(planned, trip.load_weight_lb))
+    if no_data := _no_data_notice(ranked_routes):
+        notices.append(no_data)
     return Plan(
         origin_time_zone=str(time_zone),
         departure=trip.departure_minute.astimezone(time_zone),
         interval_miles=interval_miles,
         interval_automatic=automatic,
-        routes=_with_weather(planned, trip.load_weight_lb),
+        routes=ranked_routes,
+        recommended_route_id=ranking.recommended_id,
+        all_blocked_warning=_ALL_BLOCKED_WARNING if ranking.all_blocked else None,
         notices=notices,
     )
 
@@ -123,6 +144,53 @@ def _with_weather(routes: list[PlannedRoute], load_weight_lb: int) -> list[Plann
         replace(route, checkpoints=[forecast_at(checkpoint) for checkpoint in route.checkpoints])
         for route in routes
     ]
+
+
+def _ranked(routes: list[PlannedRoute]) -> tuple[list[PlannedRoute], Ranking]:
+    """``routes`` with their risk mileage and rank, in the order given (ids stay fixed), and the
+    ranking they came from."""
+    assessments = [
+        assess_route(
+            route.id,
+            travel_time_s=route.duration_seconds,
+            checkpoints=[
+                (checkpoint.covered_miles, checkpoint.risk) for checkpoint in route.checkpoints
+            ],
+        )
+        for route in routes
+    ]
+    ranking = rank_routes(assessments)
+    ranked_by_id = {ranked.route_id: ranked for ranked in ranking.routes}
+    return [
+        replace(route, assessment=assessment, ranked=ranked_by_id[route.id])
+        for route, assessment in zip(routes, assessments, strict=True)
+    ], ranking
+
+
+_ALL_BLOCKED_WARNING = Notice(
+    code="all_routes_blocked",
+    message=(
+        "Do not travel at this departure time. Every route passes through No Travel "
+        "conditions; try another departure time."
+    ),
+)
+
+
+def _no_data_notice(routes: list[PlannedRoute]) -> Notice | None:
+    count = sum(
+        checkpoint.risk.level is None for route in routes for checkpoint in route.checkpoints
+    )
+    if not count:
+        return None
+    noun = "checkpoint" if count == 1 else "checkpoints"
+    return Notice(
+        code="no_data_checkpoints",
+        message=(
+            f"The forecast is missing at {count} {noun}. {'It is' if count == 1 else 'They are'} "
+            "marked No data and left out of risk mileage and average risk; each route's "
+            "unassessed miles are shown on its card."
+        ),
+    )
 
 
 def _fewer_routes_notice(count: int) -> Notice:

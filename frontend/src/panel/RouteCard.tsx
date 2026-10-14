@@ -1,10 +1,20 @@
-import { Box, ButtonBase, Typography } from '@mui/material';
+import { Box, ButtonBase, Chip, Typography } from '@mui/material';
 import type { PlannedRoute } from '../api/plan';
-import { formatDuration, formatInZone, formatMiles } from '../trip/format';
+import { riskStyle } from '../risk/palette';
+import {
+  formatAverageRisk,
+  formatDuration,
+  formatInZone,
+  formatMiles,
+  formatMilesExact,
+} from '../trip/format';
 
 interface RouteCardProps {
   route: PlannedRoute;
   label: string;
+  /** How many routes were ranked: the card says "Rank 1 of 3". */
+  routeCount: number;
+  recommended: boolean;
   /** The origin's zone: the arrival time is shown, and labelled, in it. */
   timeZone: string;
   selected: boolean;
@@ -12,7 +22,16 @@ interface RouteCardProps {
 }
 
 /** One route's summary. It is a toggle button: pressing it selects the route on the map too. */
-export function RouteCard({ route, label, timeZone, selected, onSelect }: RouteCardProps) {
+export function RouteCard({
+  route,
+  label,
+  routeCount,
+  recommended,
+  timeZone,
+  selected,
+  onSelect,
+}: RouteCardProps) {
+  const { risk_miles: miles } = route;
   return (
     <ButtonBase
       onClick={onSelect}
@@ -23,13 +42,25 @@ export function RouteCard({ route, label, timeZone, selected, onSelect }: RouteC
         p: 2,
         borderRadius: 2,
         border: 2,
+        // A blocked route is dashed here as it is on the map.
+        borderStyle: route.blocked ? 'dashed' : 'solid',
         borderColor: selected ? 'primary.main' : 'divider',
         bgcolor: selected ? 'action.hover' : 'background.paper',
       }}
     >
-      <Typography component="span" variant="subtitle2" sx={{ display: 'block' }}>
-        {label}
-      </Typography>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+        <Typography component="span" variant="subtitle2">
+          {label}
+        </Typography>
+        {recommended && <Chip size="small" color="success" label="Recommended" />}
+        {route.blocked && <Chip size="small" color="error" label="Blocked by No Travel" />}
+        <Typography
+          component="span"
+          variant="caption"
+          color="text.secondary"
+          sx={{ ml: 'auto' }}
+        >{`Rank ${route.rank} of ${routeCount}`}</Typography>
+      </Box>
       <Box sx={{ display: 'flex', gap: 1.5, mt: 0.5, flexWrap: 'wrap' }}>
         <Typography component="span" variant="body2">
           {formatMiles(route.distance_miles)}
@@ -41,6 +72,42 @@ export function RouteCard({ route, label, timeZone, selected, onSelect }: RouteC
       <Typography component="span" variant="body2" color="text.secondary" sx={{ display: 'block' }}>
         Arrives {formatInZone(route.arrival, timeZone)}
       </Typography>
+      <Box sx={{ display: 'flex', gap: 1.5, mt: 1, flexWrap: 'wrap' }}>
+        <RiskMiles level="severe" label="Severe" miles={miles.severe} />
+        <RiskMiles level="high" label="High" miles={miles.high} />
+        <RiskMiles level="no_travel" label="No Travel" miles={miles.no_travel} />
+      </Box>
+      <Box sx={{ display: 'flex', gap: 1.5, mt: 0.5, flexWrap: 'wrap' }}>
+        <Typography component="span" variant="body2" color="text.secondary">
+          {`Unassessed ${formatMilesExact(miles.unassessed)} mi`}
+        </Typography>
+        <Typography component="span" variant="body2" color="text.secondary">
+          {`Average risk ${formatAverageRisk(route.average_risk)}`}
+        </Typography>
+      </Box>
     </ButtonBase>
+  );
+}
+
+/** Miles at one level, with the level's palette colour beside the words. */
+function RiskMiles({
+  level,
+  label,
+  miles,
+}: {
+  level: 'severe' | 'high' | 'no_travel';
+  label: string;
+  miles: number;
+}) {
+  return (
+    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+      <Box
+        aria-hidden="true"
+        sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: riskStyle(level).color }}
+      />
+      <Typography component="span" variant="body2">
+        {`${label} ${formatMilesExact(miles)} mi`}
+      </Typography>
+    </Box>
   );
 }

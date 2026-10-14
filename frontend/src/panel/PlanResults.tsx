@@ -3,8 +3,10 @@ import type { ApiError } from '../api/client';
 import type { Plan, SamplingInterval } from '../api/plan';
 import { describeWait, type RateLimitWait } from '../api/rateLimit';
 import { RiskLegend } from '../risk/RiskLegend';
+import { routeLabels, routesByRank } from '../trip/ranking';
 import { IntervalToggle } from './IntervalToggle';
 import { PlanNotices } from './PlanNotices';
+import { AllBlockedWarning, Recommendation, WhyThisRoute } from './Recommendation';
 import { RouteCard } from './RouteCard';
 import { WakingUpNotice } from './WakingUpNotice';
 
@@ -60,9 +62,28 @@ export function PlanResults({
   const alert = waiting || (error && <Alert severity="error">{error.message}</Alert>);
   if (!plan) return alert || null;
 
+  const labels = routeLabels(plan.routes);
+  const ranked = routesByRank(plan.routes);
+  const recommended = plan.routes.find((route) => route.id === plan.recommended_route_id);
+
   return (
     <Stack spacing={2}>
       {alert}
+      {plan.all_blocked_warning && <AllBlockedWarning warning={plan.all_blocked_warning} />}
+      {recommended && (
+        <>
+          <Recommendation
+            route={recommended}
+            label={labels[recommended.id]}
+            timeZone={plan.origin_time_zone}
+          />
+          <WhyThisRoute
+            recommended={recommended}
+            alternatives={ranked.filter((route) => route.id !== recommended.id)}
+            labels={labels}
+          />
+        </>
+      )}
       <PlanNotices notices={plan.notices} />
       <IntervalToggle
         interval={plan.interval_miles}
@@ -74,11 +95,13 @@ export function PlanResults({
         <Typography id="routes-heading" component="h2" variant="subtitle1">
           Routes
         </Typography>
-        {plan.routes.map((route, index) => (
+        {ranked.map((route) => (
           <RouteCard
             key={route.id}
             route={route}
-            label={`Route ${index + 1}`}
+            label={labels[route.id]}
+            routeCount={plan.routes.length}
+            recommended={route.id === plan.recommended_route_id}
             timeZone={plan.origin_time_zone}
             selected={route.id === selectedRouteId}
             onSelect={() => onSelectRoute(route.id)}
