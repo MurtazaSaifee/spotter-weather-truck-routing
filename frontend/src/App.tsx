@@ -93,7 +93,7 @@ export default function App() {
             timeZone={plan?.origin_time_zone ?? null}
             selectedRouteId={selectedRouteId}
             onSelectRoute={setSelectedRouteId}
-            overlay={
+            controls={
               plan ? (
                 <HeatmapControls
                   status={heatmapStatus}

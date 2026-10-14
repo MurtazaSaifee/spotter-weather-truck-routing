@@ -17,17 +17,24 @@ interface MapViewProps {
   timeZone: string | null;
   selectedRouteId: string | null;
   onSelectRoute: (id: string) => void;
-  /** Controls laid over the map, such as the forecast slider. */
-  overlay?: ReactNode;
+  /** A strip under the map, such as the forecast slider. */
+  controls?: ReactNode;
 }
 
-export function MapView({ overlay, ...props }: MapViewProps) {
+/**
+ * The map with a strip of controls beneath it. The strip sits below the map rather than over
+ * it: the map's attribution wraps onto several lines in a narrow map, and nothing laid over the
+ * map's corners can be sure to stay clear of it.
+ */
+export function MapView({ controls, ...props }: MapViewProps) {
   return (
-    <Box sx={{ position: 'relative', width: '100%', height: '100%' }}>
-      <Suspense fallback={<MapPlaceholder />}>
-        <TripMap {...props} />
-      </Suspense>
-      {overlay}
+    <Box sx={{ display: 'flex', flexDirection: 'column', width: '100%', height: '100%' }}>
+      <Box sx={{ position: 'relative', flex: 1, minHeight: 0 }}>
+        <Suspense fallback={<MapPlaceholder />}>
+          <TripMap {...props} />
+        </Suspense>
+      </Box>
+      {controls}
     </Box>
   );
 }
