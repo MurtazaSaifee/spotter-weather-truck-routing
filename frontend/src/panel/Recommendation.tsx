@@ -1,4 +1,5 @@
 import { Alert, Box, Paper, Stack, Typography } from '@mui/material';
+import { createSvgIcon } from '@mui/material/utils';
 import type { Deciding, Notice, PlannedRoute } from '../api/plan';
 import {
   formatAverageRisk,
@@ -8,6 +9,12 @@ import {
   formatMilesExact,
 } from '../trip/format';
 import { AVERAGE_RISK_TOLERANCE } from '../trip/ranking';
+
+// Material "check_circle", inlined like the icons in HealthStatus.
+const CheckCircleIcon = createSvgIcon(
+  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />,
+  'CheckCircle',
+);
 
 interface RecommendationProps {
   route: PlannedRoute;
@@ -22,12 +29,15 @@ export function Recommendation({ route, label, timeZone }: RecommendationProps) 
       component="section"
       aria-labelledby="recommendation-heading"
       variant="outlined"
-      sx={{ p: 2, borderColor: 'success.main', borderWidth: 2 }}
+      sx={{ p: 2, bgcolor: 'success.light', borderColor: 'success.main', borderWidth: 2 }}
     >
-      <Typography id="recommendation-heading" component="h2" variant="subtitle1">
-        Recommended route
-      </Typography>
-      <Typography variant="body1" sx={{ fontWeight: 600 }}>
+      <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center', color: 'success.dark' }}>
+        <CheckCircleIcon aria-hidden fontSize="small" />
+        <Typography id="recommendation-heading" component="h2" variant="subtitle2">
+          Recommended route
+        </Typography>
+      </Stack>
+      <Typography variant="subtitle1" sx={{ mt: 0.75, fontSize: '1.0625rem' }}>
         {`${label} · ${formatMiles(route.distance_miles)} · ${formatDuration(route.duration_seconds)}`}
       </Typography>
       <Typography variant="body2" color="text.secondary">
@@ -48,13 +58,8 @@ interface WhyThisRouteProps {
 export function WhyThisRoute({ recommended, alternatives, labels }: WhyThisRouteProps) {
   const label = labels[recommended.id];
   return (
-    <Paper
-      component="section"
-      aria-labelledby="why-heading"
-      variant="outlined"
-      sx={{ p: 2 }}
-    >
-      <Typography id="why-heading" component="h2" variant="subtitle1">
+    <Paper component="section" aria-labelledby="why-heading" variant="outlined" sx={{ p: 2 }}>
+      <Typography id="why-heading" component="h2" variant="subtitle1" sx={{ mb: 0.5 }}>
         Why this route
       </Typography>
       {alternatives.length === 0 ? (
@@ -66,14 +71,17 @@ export function WhyThisRoute({ recommended, alternatives, labels }: WhyThisRoute
           <Typography variant="body2" color="text.secondary">
             {`${label} is recommended. Routes are compared on Severe miles, then High miles, then average risk, then travel time.`}
           </Typography>
-          <Stack component="ul" spacing={1} sx={{ m: 0, mt: 1, p: 0, listStyle: 'none' }}>
+          <Stack component="ul" spacing={1.5} sx={{ m: 0, mt: 1.5, p: 0, listStyle: 'none' }}>
             {alternatives.map((route) => (
-              <Box component="li" key={route.id}>
-                <Typography component="span" variant="body2" sx={{ fontWeight: 600 }}>
+              <Box
+                component="li"
+                key={route.id}
+                sx={{ pl: 1.5, borderLeft: 3, borderColor: 'divider' }}
+              >
+                <Typography component="span" variant="subtitle2" sx={{ display: 'block' }}>
                   {`Against ${labels[route.id]}`}
                 </Typography>
-                <Typography component="span" variant="body2">
-                  {' '}
+                <Typography component="span" variant="body2" color="text.secondary">
                   {route.deciding
                     ? explain(route.deciding, label, labels[route.id])
                     : 'No difference found.'}

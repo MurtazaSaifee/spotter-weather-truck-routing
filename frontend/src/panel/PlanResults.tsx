@@ -1,4 +1,5 @@
-import { Alert, CircularProgress, Stack, Typography } from '@mui/material';
+import { Alert, CircularProgress, Paper, Skeleton, Stack, Typography } from '@mui/material';
+import { RESULTS_ANCHOR } from '../layout/AppShell';
 import type { ApiError } from '../api/client';
 import type { Plan, SamplingInterval } from '../api/plan';
 import { describeWait, type RateLimitWait } from '../api/rateLimit';
@@ -43,7 +44,7 @@ export function PlanResults({
   if (isPlanning && !plan) {
     if (waiting) return waiting;
     return (
-      <Stack spacing={1}>
+      <Stack spacing={2} {...{ [RESULTS_ANCHOR]: '' }}>
         <Stack
           role="status"
           direction="row"
@@ -56,6 +57,7 @@ export function PlanResults({
           </Typography>
         </Stack>
         <WakingUpNotice />
+        <ResultsSkeleton />
       </Stack>
     );
   }
@@ -67,7 +69,7 @@ export function PlanResults({
   const recommended = plan.routes.find((route) => route.id === plan.recommended_route_id);
 
   return (
-    <Stack spacing={2}>
+    <Stack spacing={2} {...{ [RESULTS_ANCHOR]: '' }}>
       {alert}
       {plan.all_blocked_warning && <AllBlockedWarning warning={plan.all_blocked_warning} />}
       {recommended && (
@@ -109,6 +111,25 @@ export function PlanResults({
         ))}
       </Stack>
       <RiskLegend />
+    </Stack>
+  );
+}
+
+/**
+ * Stands where the results will be, with their shapes and heights (a recommendation, then
+ * route cards), so the panel does not jump when the plan arrives.
+ */
+function ResultsSkeleton() {
+  return (
+    <Stack spacing={2} aria-hidden="true">
+      <Skeleton variant="rounded" height={92} sx={{ borderRadius: 3 }} />
+      {[0, 1, 2].map((index) => (
+        <Paper key={index} variant="outlined" sx={{ p: 2, borderWidth: 2 }}>
+          <Skeleton width="40%" />
+          <Skeleton width="65%" />
+          <Skeleton width="50%" />
+        </Paper>
+      ))}
     </Stack>
   );
 }

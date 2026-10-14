@@ -38,18 +38,21 @@ export function RouteCard({
       aria-pressed={selected}
       sx={{
         display: 'block',
+        width: '100%',
         textAlign: 'left',
         p: 2,
-        borderRadius: 2,
+        borderRadius: 3,
         border: 2,
         // A blocked route is dashed here as it is on the map.
         borderStyle: route.blocked ? 'dashed' : 'solid',
         borderColor: selected ? 'primary.main' : 'divider',
-        bgcolor: selected ? 'action.hover' : 'background.paper',
+        bgcolor: selected ? 'rgba(26, 69, 144, 0.05)' : 'background.paper',
+        transition: 'background-color 120ms, border-color 120ms',
+        '&:hover': { borderColor: selected ? 'primary.main' : 'grey.400' },
       }}
     >
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
-        <Typography component="span" variant="subtitle2">
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap', minHeight: 24 }}>
+        <Typography component="span" variant="subtitle1">
           {label}
         </Typography>
         {recommended && <Chip size="small" color="success" label="Recommended" />}
@@ -61,29 +64,31 @@ export function RouteCard({
           sx={{ ml: 'auto' }}
         >{`Rank ${route.rank} of ${routeCount}`}</Typography>
       </Box>
-      <Box sx={{ display: 'flex', gap: 1.5, mt: 0.5, flexWrap: 'wrap' }}>
-        <Typography component="span" variant="body2">
+      <Box sx={{ display: 'flex', columnGap: 1.5, mt: 0.5, flexWrap: 'wrap' }}>
+        <Typography component="span" variant="body1" sx={{ fontWeight: 600 }}>
           {formatMiles(route.distance_miles)}
         </Typography>
-        <Typography component="span" variant="body2">
+        <Typography component="span" variant="body1" sx={{ fontWeight: 600 }}>
           {formatDuration(route.duration_seconds)}
         </Typography>
       </Box>
       <Typography component="span" variant="body2" color="text.secondary" sx={{ display: 'block' }}>
         Arrives {formatInZone(route.arrival, timeZone)}
       </Typography>
-      <Box sx={{ display: 'flex', gap: 1.5, mt: 1, flexWrap: 'wrap' }}>
-        <RiskMiles level="severe" label="Severe" miles={miles.severe} />
-        <RiskMiles level="high" label="High" miles={miles.high} />
-        <RiskMiles level="no_travel" label="No Travel" miles={miles.no_travel} />
-      </Box>
-      <Box sx={{ display: 'flex', gap: 1.5, mt: 0.5, flexWrap: 'wrap' }}>
-        <Typography component="span" variant="body2" color="text.secondary">
-          {`Unassessed ${formatMilesExact(miles.unassessed)} mi`}
-        </Typography>
-        <Typography component="span" variant="body2" color="text.secondary">
-          {`Average risk ${formatAverageRisk(route.average_risk)}`}
-        </Typography>
+      <Box sx={{ mt: 1.5, pt: 1.5, borderTop: 1, borderColor: 'divider' }}>
+        <Box sx={{ display: 'flex', flexWrap: 'wrap', columnGap: 2, rowGap: 0.5 }}>
+          <RiskMiles level="severe" label="Severe" miles={miles.severe} />
+          <RiskMiles level="high" label="High" miles={miles.high} />
+          <RiskMiles level="no_travel" label="No Travel" miles={miles.no_travel} />
+        </Box>
+        <Box sx={{ display: 'flex', flexWrap: 'wrap', columnGap: 2, rowGap: 0.25, mt: 0.75 }}>
+          <Typography component="span" variant="body2" color="text.secondary" noWrap>
+            {`Unassessed ${formatMilesExact(miles.unassessed)} mi`}
+          </Typography>
+          <Typography component="span" variant="body2" color="text.secondary" noWrap>
+            {`Average risk ${formatAverageRisk(route.average_risk)}`}
+          </Typography>
+        </Box>
       </Box>
     </ButtonBase>
   );
@@ -100,10 +105,10 @@ function RiskMiles({
   miles: number;
 }) {
   return (
-    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, whiteSpace: 'nowrap' }}>
       <Box
         aria-hidden="true"
-        sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: riskStyle(level).color }}
+        sx={{ flex: 'none', width: 10, height: 10, borderRadius: '50%', bgcolor: riskStyle(level).color }}
       />
       <Typography component="span" variant="body2">
         {`${label} ${formatMilesExact(miles)} mi`}
