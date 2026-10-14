@@ -11,6 +11,24 @@ export interface PlanRequest {
   departure: string;
   /** Cargo weight in whole pounds. */
   load_weight_lb: number;
+  /** Miles between checkpoints. Left out, the server picks one from the trip's length. */
+  interval_miles?: SamplingInterval;
+}
+
+/** The sampling intervals the server accepts. */
+export const SAMPLING_INTERVALS = [10, 25, 50] as const;
+export type SamplingInterval = (typeof SAMPLING_INTERVALS)[number];
+
+/** A sampled point on a route. */
+export interface Checkpoint {
+  /** Miles from the origin along the route. */
+  mile: number;
+  lat: number;
+  lng: number;
+  /** When the truck gets here: ISO-8601 in the origin's zone. */
+  eta: string;
+  /** Miles of road this checkpoint stands for; a route's checkpoints add up to its length. */
+  covered_miles: number;
 }
 
 export interface PlannedRoute {
@@ -23,6 +41,10 @@ export interface PlannedRoute {
   arrival: string;
   /** Google encoded polyline (precision 5), simplified to about 100 m. */
   geometry: string;
+  /** Seconds after departure at each vertex of `geometry`. */
+  elapsed_seconds: number[];
+  /** From the origin to the destination. */
+  checkpoints: Checkpoint[];
 }
 
 /** A plan-level message for the driver. */
@@ -35,6 +57,10 @@ export interface Plan {
   /** IANA zone at the origin: every time in the plan is shown in it. */
   origin_time_zone: string;
   departure: string;
+  /** Miles between checkpoints, the same on every route. */
+  interval_miles: SamplingInterval;
+  /** True when the server chose the interval from the trip's length. */
+  interval_automatic: boolean;
   routes: PlannedRoute[];
   notices: Notice[];
 }

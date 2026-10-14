@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 from django.utils import timezone
 from rest_framework import serializers
 
+from .checkpoints import INTERVAL_CHOICES
 from .routing import TripRequest
 
 # A box around the US, Canada and Mexico, as (south, north) and (west, east). It also takes in a
@@ -73,6 +74,15 @@ class PlanRequestSerializer(serializers.Serializer):
         help_text="Weight of the cargo in pounds. The empty truck's weight is added for routing.",
     )
 
+    interval_miles = serializers.ChoiceField(
+        choices=INTERVAL_CHOICES,
+        required=False,
+        help_text=(
+            "Miles between checkpoints. Left out, it is chosen from the length of the "
+            "shortest route: 10 under 300 mi, 25 up to 1,000 mi, 50 beyond."
+        ),
+    )
+
     def validate_departure(self, value: datetime) -> datetime:
         now = timezone.now()
         if value < now - DEPARTURE_GRACE:
@@ -98,6 +108,11 @@ class PlanRequestSerializer(serializers.Serializer):
             load_weight_lb=data["load_weight_lb"],
         )
 
+    @property
+    def interval_miles_override(self) -> int | None:
+        """The driver's chosen interval, if any. Call after ``is_valid``."""
+        return self.validated_data.get("interval_miles")
+
 
 def _coordinates(place: dict) -> tuple[float, float]:
     """A place's ``(lat, lng)``, to 5 decimals (about 1 m): closer than that is the same place."""
@@ -107,6 +122,34 @@ def _coordinates(place: dict) -> tuple[float, float]:
 class NoticeSerializer(serializers.Serializer):
     code = serializers.CharField(help_text="Machine-readable, e.g. `fewer_routes`.")
     message = serializers.CharField(help_text="Text to show the driver.")
+
+
+class RoundedFloatField(serializers.FloatField):
+    """A float written to a fixed number of decimals, so responses stay compact."""
+
+    def __init__(self, places: int, **kwargs) -> None:
+        self.places = places
+        super().__init__(**kwargs)
+
+    def to_representation(self, value: float) -> float:
+        return round(super().to_representation(value), self.places)
+
+
+class CheckpointSerializer(serializers.Serializer):
+    mile = RoundedFloatField(3, help_text="Miles from the origin along the route.")
+    lat = RoundedFloatField(5)
+    lng = RoundedFloatField(5)
+    eta = OffsetDateTimeField(
+        help_text="When the truck gets here, in the origin's time zone. No rest stops included."
+    )
+    covered_miles = RoundedFloatField(
+        3,
+        help_text=(
+            "Miles of road this checkpoint stands for: half the gap to each neighbour. The "
+            "first and last cover only their inner half. A route's checkpoints add up to its "
+            "length."
+        ),
+    )
 
 
 class PlannedRouteSerializer(serializers.Serializer):
@@ -121,11 +164,22 @@ class PlannedRouteSerializer(serializers.Serializer):
             "The route as a Google encoded polyline (precision 5), simplified to about 100 m."
         )
     )
+    elapsed_seconds = serializers.ListField(
+        child=serializers.IntegerField(),
+        help_text="Seconds after departure at each vertex of `geometry`, one per vertex.",
+    )
+    checkpoints = CheckpointSerializer(many=True, help_text="From the origin to the destination.")
 
 
 class PlanSerializer(serializers.Serializer):
     origin_time_zone = serializers.CharField(help_text="IANA time zone at the origin.")
     departure = OffsetDateTimeField(help_text="To the minute, in the origin's time zone.")
+    interval_miles = serializers.IntegerField(
+        help_text="Miles between checkpoints, on every route."
+    )
+    interval_automatic = serializers.BooleanField(
+        help_text="True when the interval was chosen from the trip's length, not by the driver."
+    )
     routes = PlannedRouteSerializer(many=True, help_text="Up to three, fastest first.")
     notices = NoticeSerializer(many=True)
 

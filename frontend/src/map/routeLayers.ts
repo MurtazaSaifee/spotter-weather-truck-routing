@@ -22,7 +22,7 @@ const OTHER_WIDTH_PX = 5;
 // Routes are thin lines, so let a click land a few pixels off one.
 export const ROUTE_PICKING_RADIUS_PX = 8;
 
-function rgb(hex: string): [number, number, number] {
+export function rgb(hex: string): [number, number, number] {
   const value = parseInt(hex.slice(1), 16);
   return [(value >> 16) & 255, (value >> 8) & 255, value & 255];
 }

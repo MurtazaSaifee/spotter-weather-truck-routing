@@ -1,6 +1,11 @@
 import dayjs from 'dayjs';
 import { zoneAbbreviation } from './departure';
 
+/** Miles to a tenth, without a pointless `.0`: `25` and `926.8`. */
+export function formatMilesExact(miles: number): string {
+  return miles.toLocaleString('en-US', { maximumFractionDigits: 1 });
+}
+
 export function formatMiles(miles: number): string {
   return `${Math.round(miles).toLocaleString('en-US')} mi`;
 }
