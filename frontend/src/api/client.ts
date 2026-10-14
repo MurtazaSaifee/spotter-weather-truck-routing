@@ -71,6 +71,19 @@ async function request<T>(path: string, init: RequestInit): Promise<T> {
   return body as T;
 }
 
+export function apiPost<T>(
+  path: string,
+  body: unknown,
+  options: { signal?: AbortSignal } = {},
+): Promise<T> {
+  return request<T>(path, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+    signal: options.signal,
+  });
+}
+
 export function apiGet<T>(
   path: string,
   options: { signal?: AbortSignal } = {},

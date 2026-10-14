@@ -1,14 +1,23 @@
 import { Stack } from '@mui/material';
+import type { ApiError } from '../api/client';
+import type { Plan, PlanRequest } from '../api/plan';
 import type { Place } from '../api/places';
 import { AppHeader } from './AppHeader';
 import { HealthStatus } from './HealthStatus';
-import { PlaceField } from './PlaceField';
+import { PlanResults } from './PlanResults';
+import { TripForm } from './TripForm';
 
 interface PlannerPanelProps {
   origin: Place | null;
   onOriginChange: (place: Place | null) => void;
   destination: Place | null;
   onDestinationChange: (place: Place | null) => void;
+  onPlan: (request: PlanRequest) => void;
+  isPlanning: boolean;
+  planError: ApiError | null;
+  plan: Plan | null;
+  selectedRouteId: string | null;
+  onSelectRoute: (id: string) => void;
 }
 
 export function PlannerPanel({
@@ -16,14 +25,31 @@ export function PlannerPanel({
   onOriginChange,
   destination,
   onDestinationChange,
+  onPlan,
+  isPlanning,
+  planError,
+  plan,
+  selectedRouteId,
+  onSelectRoute,
 }: PlannerPanelProps) {
   return (
     <Stack spacing={3} sx={{ p: 3 }}>
       <AppHeader />
-      <Stack spacing={2}>
-        <PlaceField label="Origin" value={origin} onChange={onOriginChange} />
-        <PlaceField label="Destination" value={destination} onChange={onDestinationChange} />
-      </Stack>
+      <TripForm
+        origin={origin}
+        onOriginChange={onOriginChange}
+        destination={destination}
+        onDestinationChange={onDestinationChange}
+        isPlanning={isPlanning}
+        onPlan={onPlan}
+      />
+      <PlanResults
+        isPlanning={isPlanning}
+        error={planError}
+        plan={plan}
+        selectedRouteId={selectedRouteId}
+        onSelectRoute={onSelectRoute}
+      />
       <HealthStatus />
     </Stack>
   );

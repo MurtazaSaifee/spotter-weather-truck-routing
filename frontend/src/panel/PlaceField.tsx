@@ -55,13 +55,15 @@ interface PlaceFieldProps {
   value: Place | null;
   /** Called with the picked place, or with null when the field is cleared. */
   onChange: (place: Place | null) => void;
+  /** Shown under the field, which turns red, while the place is not acceptable. */
+  error?: string;
 }
 
 /**
  * A text field that suggests North American places as the driver types (after
  * a pause, from three characters) and reports the one they pick.
  */
-export function PlaceField({ label, value, onChange }: PlaceFieldProps) {
+export function PlaceField({ label, value, onChange, error }: PlaceFieldProps) {
   const [inputValue, setInputValue] = useState('');
   const query = inputValue.trim();
   const debouncedQuery = useDebouncedValue(query, SUGGESTION_DEBOUNCE_MS);
@@ -111,7 +113,9 @@ export function PlaceField({ label, value, onChange }: PlaceFieldProps) {
       noOptionsText={noOptionsText}
       slots={{ paper: SuggestionsPaper }}
       slotProps={{ paper: { attribution } }}
-      renderInput={(params) => <TextField {...params} label={label} />}
+      renderInput={(params) => (
+        <TextField {...params} label={label} error={Boolean(error)} helperText={error} />
+      )}
     />
   );
 }
