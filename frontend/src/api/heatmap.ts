@@ -1,5 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
+import { useState } from 'react';
 import { apiPost } from './client';
+import { type RateLimitWait, retryOnceAfterRateLimit } from './rateLimit';
 
 /** The body of POST /api/heatmap: exactly the routes on screen. */
 export interface HeatmapRequest {
@@ -52,15 +54,23 @@ export interface Heatmap {
  * The heatmap over `request`'s routes, fetched once. Scrubbing the forecast slider happens on
  * the client, so it never asks again. The same routes, departure and load are one query, which
  * is why planning the same trip with another interval keeps the heatmap, and a null request
- * (no plan on screen) holds nothing.
+ * (no plan on screen) holds nothing. When a rate limit turns the request down for a short
+ * while, it waits and asks once more, and `rateLimitWait` holds the countdown meanwhile.
  */
 export function useHeatmap(request: HeatmapRequest | null) {
-  return useQuery({
+  const [rateLimitWait, setRateLimitWait] = useState<RateLimitWait | null>(null);
+  const query = useQuery({
     queryKey: ['heatmap', request?.geometries, request?.departure, request?.load_weight_lb],
-    queryFn: ({ signal }) => apiPost<Heatmap>('/api/heatmap', request, { signal }),
+    queryFn: ({ signal }) =>
+      retryOnceAfterRateLimit(
+        () => apiPost<Heatmap>('/api/heatmap', request, { signal }),
+        setRateLimitWait,
+        signal,
+      ),
     enabled: request !== null,
     // The server's forecast is cached for an hour; a few minutes is as fresh as it gets.
     staleTime: 5 * 60_000,
     retry: false,
   });
+  return { ...query, rateLimitWait };
 }

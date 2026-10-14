@@ -73,6 +73,13 @@ else:
         }
     }
 
+# Requests per visitor per hour, by endpoint (see api/ratelimit.py).
+RATE_LIMITS = {"plan": 60, "heatmap": 60, "suggest": 300}
+# How many proxies stand between the visitor and Django and append to X-Forwarded-For: two in
+# production (Vercel's egress, then Cloud Run's front end). Calling Cloud Run directly leaves
+# one; a local server behind none needs 0 or no header at all.
+TRUSTED_PROXY_HOPS = int(os.environ.get("TRUSTED_PROXY_HOPS", "2"))
+
 LANGUAGE_CODE = "en-us"
 TIME_ZONE = "UTC"
 USE_I18N = False

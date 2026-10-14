@@ -7,6 +7,7 @@ import {
   ToggleButtonGroup,
   Typography,
 } from '@mui/material';
+import { describeWait, type RateLimitWait } from '../api/rateLimit';
 import { MAX_FORECAST_HOUR, useForecastHour, useForecastHourStore } from './forecastHour';
 import { forecastLabel } from './forecastLabel';
 import { HeatmapLegend } from './HeatmapLegend';
@@ -16,6 +17,8 @@ export type HeatmapStatus = 'loading' | 'ready' | 'error';
 
 interface HeatmapControlsProps {
   status: HeatmapStatus;
+  /** Set while the heatmap request waits out a short rate limit before its automatic retry. */
+  rateLimitWait: RateLimitWait | null;
   /** The plan's departure (ISO-8601) and the origin's zone: the slider's clock times. */
   departure: string;
   timeZone: string;
@@ -31,6 +34,7 @@ interface HeatmapControlsProps {
  */
 export function HeatmapControls({
   status,
+  rateLimitWait,
   departure,
   timeZone,
   layer,
@@ -51,7 +55,9 @@ export function HeatmapControls({
       {status === 'loading' && (
         <Box role="status" sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
           <CircularProgress size={18} thickness={5} aria-hidden />
-          <Typography variant="body2">Checking forecasts…</Typography>
+          <Typography variant="body2">
+            {rateLimitWait ? describeWait(rateLimitWait) : 'Checking forecasts…'}
+          </Typography>
         </Box>
       )}
       {status === 'error' && (

@@ -1,6 +1,8 @@
 import { useMutation } from '@tanstack/react-query';
+import { useState } from 'react';
 import { apiPost } from './client';
 import type { Place } from './places';
+import { type RateLimitWait, retryOnceAfterRateLimit } from './rateLimit';
 
 /** The body of POST /api/plan. */
 export interface PlanRequest {
@@ -103,9 +105,16 @@ export interface Plan {
   notices: Notice[];
 }
 
-/** Plans a trip when `mutate` is called: routes, with their times in the origin's zone. */
+/**
+ * Plans a trip when `mutate` is called: routes, with their times in the origin's zone. When a
+ * rate limit turns the request down for a short while, it waits and asks once more, and
+ * `rateLimitWait` holds the countdown meanwhile (the mutation stays pending).
+ */
 export function usePlanTrip() {
-  return useMutation({
-    mutationFn: (request: PlanRequest) => apiPost<Plan>('/api/plan', request),
+  const [rateLimitWait, setRateLimitWait] = useState<RateLimitWait | null>(null);
+  const mutation = useMutation({
+    mutationFn: (request: PlanRequest) =>
+      retryOnceAfterRateLimit(() => apiPost<Plan>('/api/plan', request), setRateLimitWait),
   });
+  return { ...mutation, rateLimitWait };
 }
