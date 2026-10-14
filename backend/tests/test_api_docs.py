@@ -88,6 +88,16 @@ def test_every_error_response_has_an_example_in_the_error_shape(client, path, me
 
 
 @pytest.mark.parametrize(("path", "method"), ENDPOINTS)
+def test_every_429_documents_the_retry_after_header(client, path, method):
+    response = _operation(client, path, method)["responses"]["429"]
+
+    header = response["headers"]["Retry-After"]
+    assert header["description"]
+    assert header["schema"] == {"type": "integer"}
+    assert header["required"] is True
+
+
+@pytest.mark.parametrize(("path", "method"), ENDPOINTS)
 def test_every_success_response_has_an_example(client, path, method):
     operation = _operation(client, path, method)
 

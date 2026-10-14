@@ -85,6 +85,18 @@ def test_exceeding_a_limit_gives_the_code_and_the_seconds_until_it_resets(client
     assert body["details"] == {"retry_after_seconds": 40 * 60}
 
 
+def test_the_429_carries_a_retry_after_header_matching_the_body(client, settings):
+    settings.RATE_LIMITS = {"plan": 1, "heatmap": 1, "suggest": 1}
+    headers = visitor("203.0.113.7")
+    plan_as(client, headers)
+
+    response = plan_as(client, headers)
+
+    assert response.status_code == 429
+    assert response["Retry-After"] == "2400"
+    assert response["Retry-After"] == str(response.json()["details"]["retry_after_seconds"])
+
+
 def test_the_limits_start_again_with_the_next_hour(client, settings, now):
     settings.RATE_LIMITS = {"plan": 1, "heatmap": 1, "suggest": 1}
     headers = visitor("203.0.113.7")
