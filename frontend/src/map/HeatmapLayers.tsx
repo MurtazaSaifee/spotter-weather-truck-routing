@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { useMap } from 'react-map-gl/maplibre';
-import type { Heatmap } from '../api/heatmap';
+import type { Heatmap } from '../heatmap/payload';
 import { useForecastHourStore } from '../heatmap/forecastHour';
 import { useHeatmapLayer } from '../heatmap/layer';
 import { useHeatmapBitmaps } from '../heatmap/useHeatmapBitmaps';

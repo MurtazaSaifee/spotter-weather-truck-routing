@@ -1,6 +1,6 @@
 import { Box } from '@mui/material';
 import { lazy, type ReactNode, Suspense } from 'react';
-import type { Heatmap } from '../api/heatmap';
+import type { Heatmap } from '../heatmap/payload';
 import type { PlannedRoute } from '../api/plan';
 import type { Place } from '../api/places';
 import { MapPlaceholder } from './MapPlaceholder';

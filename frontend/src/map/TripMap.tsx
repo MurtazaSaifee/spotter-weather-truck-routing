@@ -8,7 +8,7 @@ import {
   NavigationControl,
   Popup,
 } from 'react-map-gl/maplibre';
-import type { Heatmap } from '../api/heatmap';
+import type { Heatmap } from '../heatmap/payload';
 import type { PlannedRoute } from '../api/plan';
 import type { Place } from '../api/places';
 import { useTruckTrack } from '../truck/useTruckTrack';

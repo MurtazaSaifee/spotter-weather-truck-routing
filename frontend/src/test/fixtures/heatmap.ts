@@ -1,5 +1,5 @@
 import dayjs from 'dayjs';
-import type { Heatmap } from '../../api/heatmap';
+import type { Heatmap } from '../../heatmap/payload';
 
 const HOURS = 49;
 const DEPARTURE = '2026-10-15T08:00:00-05:00';

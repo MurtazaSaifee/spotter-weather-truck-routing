@@ -1,4 +1,4 @@
-import { MISSING, type FrameList, type Heatmap, type HeatmapGrid } from '../api/heatmap';
+import { MISSING, type FrameList, type Heatmap, type HeatmapGrid } from './payload';
 import { RISK_LEVELS } from '../risk/palette';
 import type { HeatmapLayer } from './layer';
 import { colourTable, stepFor, WEATHER_SCALES, type WeatherLayer } from './scales';
