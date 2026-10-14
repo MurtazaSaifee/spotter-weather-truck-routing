@@ -99,6 +99,9 @@ LOGGING = {
     "formatters": {"plain": {"format": "%(levelname)s %(name)s %(message)s"}},
     "handlers": {"console": {"class": "logging.StreamHandler", "formatter": "plain"}},
     "root": {"handlers": ["console"], "level": os.environ.get("DJANGO_LOG_LEVEL", "INFO")},
+    # httpx logs every request URL at INFO, and HERE only accepts its key as a query
+    # parameter, so the key would land in the logs.
+    "loggers": {"httpx": {"level": "WARNING"}, "httpcore": {"level": "WARNING"}},
 }
 
 HERE_API_KEY = os.environ.get("HERE_API_KEY", "")
