@@ -129,6 +129,21 @@ describe('a rate-limited plan', () => {
   });
 });
 
+describe('a plan counting down to its retry', () => {
+  it('does not ask again once the page is gone', async () => {
+    const calls = answerWith({ plan: [() => weatherBusy(3), () => HttpResponse.json(chicagoToDallas)] });
+    const user = startUser();
+    const { unmount } = renderApp();
+    await planChicagoToDallas(user);
+    await screen.findByText(/Trying again in 3 s/);
+
+    unmount();
+    await tick(10);
+
+    expect(calls.plan).toBe(1);
+  });
+});
+
 describe('a visitor limit that lasts most of an hour', () => {
   it('shows the message without a countdown and does not retry', async () => {
     const calls = answerWith({ plan: [() => visitorLimited(40 * 60)] });

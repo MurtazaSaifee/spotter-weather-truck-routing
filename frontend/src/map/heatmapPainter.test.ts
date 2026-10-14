@@ -95,4 +95,33 @@ describe('HeatmapPainter', () => {
 
     expect(drawn(underlay)).toEqual([]);
   });
+  it('paints again after a paint that threw', () => {
+    const { hourStore, underlay, painter } = setUp();
+    const set = underlay.set;
+    let failures = 1;
+    underlay.set = (layers) => {
+      if (failures-- > 0) throw new Error('paint failed');
+      set(layers);
+    };
+    painter.setFrames(framesOf('risk'));
+    expect(() => vi.advanceTimersByTime(100)).toThrow('paint failed');
+
+    hourStore.set(3);
+    vi.advanceTimersByTime(1000);
+
+    expect(drawn(underlay)).toEqual(['risk3']);
+  });
+
+  it('paints again after the frames were taken away while a paint was pending', () => {
+    const { hourStore, underlay, painter } = setUp();
+    painter.setFrames(framesOf('risk'));
+    painter.setFrames(null);
+    vi.advanceTimersByTime(1000);
+
+    painter.setFrames(framesOf('wind'));
+    hourStore.set(2);
+    vi.advanceTimersByTime(1000);
+
+    expect(drawn(underlay)).toEqual(['wind2']);
+  });
 });

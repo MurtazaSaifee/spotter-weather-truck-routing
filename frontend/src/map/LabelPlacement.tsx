@@ -50,8 +50,8 @@ export function LabelPlacement({
   const { current: map } = useMap();
   // Where the labels were last put, so that they stay put while that is still a good place.
   const previous = useRef<Record<string, LngLat>>({});
-  // The padding arrives as an object that changes identity each render; its values are what count.
-  const insetsKey = JSON.stringify(insets ?? {});
+  // The insets arrive as an object that changes identity each render; its values are what count.
+  const { top = 0, right = 0, bottom = 0, left = 0 } = insets ?? {};
 
   useEffect(() => {
     if (!map) return;
@@ -85,7 +85,7 @@ export function LabelPlacement({
           },
           width,
           height,
-          padding: insets,
+          padding: { top, right, bottom, left },
         },
         previous.current,
       );
@@ -114,9 +114,20 @@ export function LabelPlacement({
       raw.off('resize', place);
       layers.set([]);
     };
-    // `insetsKey` stands for the insets' values.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [map, routes, paths, names, selectedRouteId, recommendedRouteId, onSelectRoute, insetsKey, layers]);
+  }, [
+    map,
+    routes,
+    paths,
+    names,
+    selectedRouteId,
+    recommendedRouteId,
+    onSelectRoute,
+    top,
+    right,
+    bottom,
+    left,
+    layers,
+  ]);
 
   return null;
 }

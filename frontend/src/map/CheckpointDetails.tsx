@@ -48,14 +48,8 @@ export function CheckpointDetails({
   );
 }
 
-const CONDITION_WORDS: Record<ConditionName, string> = {
-  wind: 'wind',
-  rain: 'rain',
-  snow: 'snow',
-};
-
-const words = (names: ConditionName[], joiner: string) =>
-  names.map((name) => CONDITION_WORDS[name]).join(joiner);
+/** The condition names are the words: `wind and snow`. */
+const words = (names: ConditionName[], joiner: string) => names.join(joiner);
 
 /** The level with its colour and name, then why: what drove it, what stacked, what gusts add. */
 function Risk({ risk }: { risk: CheckpointRisk }) {
