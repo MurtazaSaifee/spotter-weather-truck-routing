@@ -162,7 +162,14 @@ def find_routes(trip: TripRequest) -> list[Route]:
     HERE fails. The final routes are cached for ``ROUTE_CACHE_SECONDS``, detours included.
     """
     key = trip.cache_key()
-    cached: list[Route] | None = cache.get(key)
+    try:
+        cached: list[Route] | None = cache.get(key)
+    except Exception as error:
+        _cache_failed("read", error)
+        cached = None
+        cache_working = False
+    else:
+        cache_working = True
     if cached is not None:
         return cached
 
@@ -175,8 +182,19 @@ def find_routes(trip: TripRequest) -> list[Route]:
         routes = _add_distinct(routes, _request_detours(trip, routes[0]), footprints)
     routes.sort(key=lambda route: route.duration_s)
     routes = [replace(route, id=f"route-{number}") for number, route in enumerate(routes, 1)]
-    cache.set(key, routes, ROUTE_CACHE_SECONDS)
+    if cache_working:
+        try:
+            cache.set(key, routes, ROUTE_CACHE_SECONDS)
+        except Exception as error:
+            _cache_failed("write", error)
     return routes
+
+
+def _cache_failed(action: str, error: Exception) -> None:
+    """A cache that fails only costs a HERE request. After a failed read the write is skipped,
+    so a dead Redis costs one timeout, not two."""
+    # Not the exception itself: a Redis error message can carry the connection URL.
+    logger.warning("Route cache %s failed (%s); using HERE", action, type(error).__name__)
 
 
 def _add_distinct(

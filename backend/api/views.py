@@ -1,3 +1,5 @@
+from typing import ClassVar
+
 from drf_spectacular.utils import OpenApiResponse, extend_schema
 from rest_framework import serializers
 from rest_framework.request import Request
@@ -5,7 +7,13 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from . import places, planning
+from .ratelimit import PlanRateLimit, SuggestionRateLimit
 from .serializers import ErrorSerializer, PlanRequestSerializer, PlanSerializer
+
+RATE_LIMIT_EXCEEDED_DESCRIPTION = (
+    "`rate_limit_exceeded`: this visitor's hourly allowance is used up. "
+    "`details.retry_after_seconds` says when it resets."
+)
 
 
 class HealthSerializer(serializers.Serializer):
@@ -41,6 +49,8 @@ class PlaceSuggestionsSerializer(serializers.Serializer):
 
 
 class PlaceSuggestionsView(APIView):
+    throttle_classes: ClassVar = [SuggestionRateLimit]
+
     @extend_schema(
         summary="Suggest North American places",
         description=(
@@ -48,7 +58,10 @@ class PlaceSuggestionsView(APIView):
             "Photon answers in the same shape."
         ),
         parameters=[PlaceSuggestionQuerySerializer],
-        responses=PlaceSuggestionsSerializer,
+        responses={
+            200: PlaceSuggestionsSerializer,
+            429: OpenApiResponse(ErrorSerializer, description=RATE_LIMIT_EXCEEDED_DESCRIPTION),
+        },
     )
     def get(self, request: Request) -> Response:
         query = PlaceSuggestionQuerySerializer(data=request.query_params)
@@ -59,6 +72,8 @@ class PlaceSuggestionsView(APIView):
 
 
 class PlanView(APIView):
+    throttle_classes: ClassVar = [PlanRateLimit]
+
     @extend_schema(
         summary="Plan a truck trip",
         description=(
@@ -74,7 +89,8 @@ class PlanView(APIView):
             429: OpenApiResponse(
                 ErrorSerializer,
                 description=(
-                    "`weather_rate_limited`: the weather service is limiting requests. "
+                    "`weather_rate_limited` (the weather service is limiting requests) or "
+                    "`rate_limit_exceeded` (this visitor's hourly allowance is used up). "
                     "`details.retry_after_seconds` says how long to wait."
                 ),
             ),
