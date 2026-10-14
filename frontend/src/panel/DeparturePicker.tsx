@@ -1,5 +1,7 @@
 import type { Dayjs } from 'dayjs';
+import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { departureError, departureWindow, zoneAbbreviation } from '../trip/departure';
 
 interface DeparturePickerProps {
@@ -15,9 +17,11 @@ interface DeparturePickerProps {
 
 /**
  * A date-time picker for the departure. It blocks times outside the window the API
- * accepts and names the zone it reads the clock in.
+ * accepts and names the zone it reads the clock in. The picker stack is a big part of the
+ * app's code and nothing else uses it, so it lives here, with its own localisation provider,
+ * and the form loads this module lazily.
  */
-export function DeparturePicker({
+export default function DeparturePicker({
   value,
   onChange,
   timeZone,
@@ -30,18 +34,20 @@ export function DeparturePicker({
   const caption = `${zone} · ${zoneSource === 'origin' ? "origin's" : "your browser's"} time zone`;
 
   return (
-    <DateTimePicker
-      label="Departure"
-      value={value}
-      onChange={onChange}
-      timezone={timeZone}
-      minDateTime={min}
-      maxDateTime={max}
-      // A clock's minutes are enough; the API plans to the minute.
-      views={['year', 'month', 'day', 'hours', 'minutes']}
-      slotProps={{
-        textField: { error: error !== null, helperText: error ?? caption },
-      }}
-    />
+    <LocalizationProvider dateAdapter={AdapterDayjs}>
+      <DateTimePicker
+        label="Departure"
+        value={value}
+        onChange={onChange}
+        timezone={timeZone}
+        minDateTime={min}
+        maxDateTime={max}
+        // A clock's minutes are enough; the API plans to the minute.
+        views={['year', 'month', 'day', 'hours', 'minutes']}
+        slotProps={{
+          textField: { error: error !== null, helperText: error ?? caption },
+        }}
+      />
+    </LocalizationProvider>
   );
 }
