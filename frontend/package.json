@@ -23,7 +23,7 @@
     "@mui/x-date-pickers": "^9.15.0",
     "@tanstack/react-query": "^5.104.2",
     "dayjs": "^1.11.23",
-    "maplibre-gl": "^6.14.0",
+    "maplibre-gl": "~5.24.0",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
     "react-map-gl": "^8.1.3"

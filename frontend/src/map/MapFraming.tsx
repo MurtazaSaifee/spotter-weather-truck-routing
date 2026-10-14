@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { useMap } from 'react-map-gl/maplibre';
+import { useMap, type MapRef } from 'react-map-gl/maplibre';
 import type { Place } from '../api/places';
 import type { RoutePath } from './routeLayers';
 
@@ -7,7 +7,16 @@ import type { RoutePath } from './routeLayers';
 const SINGLE_PIN_MIN_ZOOM = 8;
 const BOTH_PINS_MAX_ZOOM = 9;
 const ROUTES_MAX_ZOOM = 12;
-const FIT_PADDING_PX = 80;
+// Breathing room around fitted bounds, per side, as a share of the map's own size.
+// A fixed pixel padding swallows a narrow map and zooms out far past the data.
+const FIT_PADDING_RATIO = 0.12;
+
+function fitPadding(map: MapRef) {
+  const { clientWidth, clientHeight } = map.getContainer();
+  const x = Math.round(clientWidth * FIT_PADDING_RATIO);
+  const y = Math.round(clientHeight * FIT_PADDING_RATIO);
+  return { top: y, bottom: y, left: x, right: x };
+}
 
 interface MapFramingProps {
   origin: Place | null;
@@ -43,7 +52,7 @@ export function MapFraming({ origin, destination, routes }: MapFramingProps) {
         [west, south],
         [east, north],
       ],
-      { padding: FIT_PADDING_PX, maxZoom: ROUTES_MAX_ZOOM },
+      { padding: fitPadding(map), maxZoom: ROUTES_MAX_ZOOM },
     );
   }, [map, routes]);
 
@@ -56,7 +65,7 @@ export function MapFraming({ origin, destination, routes }: MapFramingProps) {
           [Math.min(origin.lng, destination.lng), Math.min(origin.lat, destination.lat)],
           [Math.max(origin.lng, destination.lng), Math.max(origin.lat, destination.lat)],
         ],
-        { padding: FIT_PADDING_PX, maxZoom: BOTH_PINS_MAX_ZOOM },
+        { padding: fitPadding(map), maxZoom: BOTH_PINS_MAX_ZOOM },
       );
       return;
     }
