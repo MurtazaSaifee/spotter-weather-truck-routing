@@ -1,4 +1,6 @@
 import { Box, Button, CircularProgress, Slider, Typography } from '@mui/material';
+import type { PlannedRoute } from '../api/plan';
+import { TruckStatus } from '../truck/TruckStatus';
 import { MAX_FORECAST_HOUR, useForecastHour, useForecastHourStore } from './forecastHour';
 import { forecastLabel } from './forecastLabel';
 
@@ -9,6 +11,8 @@ interface HeatmapControlsProps {
   /** The plan's departure (ISO-8601) and the origin's zone: the slider's clock times. */
   departure: string;
   timeZone: string;
+  /** The selected route, whose truck is described beneath the slider. */
+  route: PlannedRoute | null;
   onRetry: () => void;
 }
 
@@ -17,7 +21,7 @@ interface HeatmapControlsProps {
  * while the heatmap loads (the routes and recommendation never wait for it), the hour slider
  * once it is there, and a retry when it failed.
  */
-export function HeatmapControls({ status, departure, timeZone, onRetry }: HeatmapControlsProps) {
+export function HeatmapControls({ status, departure, timeZone, route, onRetry }: HeatmapControlsProps) {
   return (
     <Box
       sx={{
@@ -46,7 +50,12 @@ export function HeatmapControls({ status, departure, timeZone, onRetry }: Heatma
           </Button>
         </Box>
       )}
-      {status === 'ready' && <HourSlider departure={departure} timeZone={timeZone} />}
+      {status === 'ready' && (
+        <>
+          <HourSlider departure={departure} timeZone={timeZone} />
+          <TruckStatus route={route} />
+        </>
+      )}
     </Box>
   );
 }

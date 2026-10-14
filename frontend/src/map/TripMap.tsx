@@ -11,6 +11,7 @@ import {
 import type { Heatmap } from '../api/heatmap';
 import type { PlannedRoute } from '../api/plan';
 import type { Place } from '../api/places';
+import { useTruckTrack } from '../truck/useTruckTrack';
 import { CheckpointDetails } from './CheckpointDetails';
 import {
   checkpointDots,
@@ -25,6 +26,7 @@ import { MapFraming } from './MapFraming';
 import { PlacePins } from './PlacePins';
 import { decodePolyline } from './polyline';
 import { createRouteLayers, ROUTE_PICKING_RADIUS_PX } from './routeLayers';
+import { TruckMarker } from './TruckMarker';
 
 const WEATHER_ATTRIBUTION =
   '<a href="https://open-meteo.com/" target="_blank" rel="noreferrer">Weather data by Open-Meteo.com</a> ' +
@@ -60,6 +62,9 @@ export default function TripMap({
   // The heatmap's layers change every animation frame while it fades; they live in a store the
   // overlay reads, so a slider tick never re-renders this component.
   const [heatmapLayers] = useState(createLayerStore);
+  // The truck moves the same way: it follows the hour store and draws above everything else.
+  const [truckLayers] = useState(createLayerStore);
+  const truckTrack = useTruckTrack(routes.find(({ id }) => id === selectedRouteId) ?? null);
   // Decoding is the expensive part; selecting a route must not repeat it. Planning again
   // with another interval returns new route objects with the same lines: keep the decoded
   // paths, so the camera stays where the driver left it.
@@ -103,9 +108,11 @@ export default function TripMap({
       <PlacePins origin={origin} destination={destination} />
       <MapFraming origin={origin} destination={destination} routes={paths} />
       <HeatmapLayers heatmap={heatmap} underlay={heatmapLayers} />
+      <TruckMarker track={truckTrack} layers={truckLayers} />
       <DeckGLOverlay
         layers={layers}
         underlay={heatmapLayers}
+        topLayers={truckLayers}
         pickingRadius={ROUTE_PICKING_RADIUS_PX}
         onHover={(info) => setHovered(dotAt(info))}
         onClick={(info) => setPinned(dotAt(info))}
