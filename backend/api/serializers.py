@@ -6,7 +6,7 @@ from django.utils import timezone
 from rest_framework import serializers
 
 from .checkpoints import INTERVAL_CHOICES
-from .risk import CONDITIONS, Criterion, Level
+from .risk import AVERAGE_RISK_TOLERANCE, CONDITIONS, Criterion, Level
 from .routing import TripRequest
 
 # A box around the US, Canada and Mexico, as (south, north) and (west, east). It also takes in a
@@ -17,6 +17,9 @@ NORTH_AMERICA_LNG = (-170.0, -50.0)
 # A driver who took a moment to submit has a departure a few minutes in the past; the
 # default "next full hour" must never be rejected for that.
 DEPARTURE_GRACE = timedelta(minutes=15)
+# The heatmap is asked for with the departure the plan accepted, sent again later: after a
+# rate-limit wait, or by a page that has been open a while. It takes a longer delay.
+HEATMAP_DEPARTURE_GRACE = timedelta(hours=1)
 DEPARTURE_HORIZON = timedelta(hours=48)
 
 MAX_LOAD_WEIGHT_LB = 50_000
@@ -56,13 +59,30 @@ class LoadWeightField(serializers.IntegerField):
         super().__init__(**kwargs)
 
 
-def check_departure_window(value: datetime) -> datetime:
-    """``value`` if it is no more than 15 minutes ago and no more than 48 hours ahead."""
+def duration_text(span: timedelta) -> str:
+    """``span`` for people: ``15 minutes``, ``1 hour``, ``48 hours``."""
+    minutes = int(span.total_seconds() // 60)
+    hours, remainder = divmod(minutes, 60)
+    count, unit = (hours, "hour") if hours and not remainder else (minutes, "minute")
+    return f"{count} {unit}{'' if count == 1 else 's'}"
+
+
+def departure_window_text(grace: timedelta = DEPARTURE_GRACE) -> str:
+    """The departure window as the help texts say it: ``15 minutes ago to 48 hours ahead``."""
+    return f"{duration_text(grace)} ago to {duration_text(DEPARTURE_HORIZON)} ahead"
+
+
+def check_departure_window(value: datetime, grace: timedelta = DEPARTURE_GRACE) -> datetime:
+    """``value`` if it is no more than ``grace`` ago and no more than 48 hours ahead."""
     now = timezone.now()
-    if value < now - DEPARTURE_GRACE:
-        raise serializers.ValidationError("Departure can't be more than 15 minutes ago.")
+    if value < now - grace:
+        raise serializers.ValidationError(
+            f"Departure can't be more than {duration_text(grace)} ago."
+        )
     if value > now + DEPARTURE_HORIZON:
-        raise serializers.ValidationError("Departure can't be more than 48 hours ahead.")
+        raise serializers.ValidationError(
+            f"Departure can't be more than {duration_text(DEPARTURE_HORIZON)} ahead."
+        )
     return value
 
 
@@ -91,8 +111,7 @@ class PlanRequestSerializer(serializers.Serializer):
     destination = TripPlaceSerializer()
     departure = OffsetDateTimeField(
         help_text=(
-            "When the truck leaves, as ISO-8601 with a UTC offset. From 15 minutes ago "
-            "to 48 hours ahead."
+            f"When the truck leaves, as ISO-8601 with a UTC offset. From {departure_window_text()}."
         )
     )
     load_weight_lb = LoadWeightField()
@@ -138,7 +157,7 @@ def _coordinates(place: dict) -> tuple[float, float]:
 
 
 class NoticeSerializer(serializers.Serializer):
-    code = serializers.CharField(help_text="Machine-readable, e.g. `fewer_routes`.")
+    code = serializers.CharField(help_text="Machine-readable, e.g. `fewer_than_three_routes`.")
     message = serializers.CharField(help_text="Text to show the driver.")
 
 
@@ -202,7 +221,8 @@ class RiskSerializer(serializers.Serializer):
         choices=LEVEL_CODES_OR_NO_DATA,
         help_text=(
             "The worst of wind (after the load rules), rain and snow. `no_data` when the "
-            "forecast lacks sustained wind, rain or snow: never treated as `low`."
+            "forecast lacks sustained wind, rain or snow: never treated as `low`. The one "
+            "exception is a known `no_travel`, which missing values cannot change."
         ),
     )
     score = RoundedFloatField(
@@ -261,8 +281,9 @@ class CheckpointSerializer(serializers.Serializer):
     weather = WeatherSerializer(
         allow_null=True,
         help_text=(
-            "The forecast for the hour the truck is here. Null means No data: there is no "
-            "forecast for the sustained wind, rain or snow at that hour or the one beside it."
+            "The forecast for the hour the truck is here. Null when there is no forecast for "
+            "the sustained wind, rain or snow at that hour or the one beside it; `risk` still "
+            "gives the conditions that are known."
         ),
     )
     risk = RiskSerializer(help_text="How risky the forecast is for this load.")
@@ -308,7 +329,7 @@ class DecidingSerializer(serializers.Serializer):
         allow_null=True,
         help_text=(
             "For `average_risk` only: the lowest average risk of the routes still in the "
-            "running, which the 0.25 tolerance is measured from."
+            f"running, which the {AVERAGE_RISK_TOLERANCE} tolerance is measured from."
         ),
     )
 

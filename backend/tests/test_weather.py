@@ -6,6 +6,8 @@ to the minute and the weather it should read can be worked out by hand.
 """
 
 import logging
+import threading
+import time
 from datetime import UTC, datetime, timedelta
 from urllib.parse import parse_qs
 
@@ -355,6 +357,25 @@ def test_an_open_meteo_failure_is_weather_unavailable(client, outbound_http, ope
     assert response.json()["code"] == "weather_unavailable"
 
 
+@pytest.mark.parametrize(
+    "variables",
+    [["wind_speed_10m"], ["wind_gusts_10m"], ["rain", "showers"], ["snowfall"]],
+    ids=["wind", "gusts", "rain", "snow"],
+)
+def test_a_series_shorter_than_the_time_array_is_weather_unavailable(
+    client, outbound_http, open_meteo, variables
+):
+    hundred_mile_route(outbound_http)
+    for location in open_meteo.recording:
+        for variable in variables:
+            location["hourly"][variable].pop()
+
+    response = post_plan(client)
+
+    assert response.status_code == 503
+    assert response.json()["code"] == "weather_unavailable"
+
+
 def test_a_failed_forecast_is_not_cached(client, outbound_http, open_meteo):
     hundred_mile_route(outbound_http)
     open_meteo.route.side_effect = httpx.ConnectError("down")
@@ -444,6 +465,32 @@ def test_no_place_is_asked_for_twice_while_planning(client, outbound_http, open_
 
     asked = lattice_points_requested(open_meteo)
     assert len(asked) == len(set(asked))
+
+
+def test_a_failing_plan_does_not_wait_for_the_heatmap_head_start(client, outbound_http, open_meteo):
+    hundred_mile_route(outbound_http)
+    corridor_requested = threading.Event()
+    release_corridor = threading.Event()
+
+    def respond(request):
+        asked = len(parse_qs(request.content.decode())["latitude"][0].split(","))
+        if asked > 5:  # the heatmap's head start: slow, and in flight when the plan fails
+            corridor_requested.set()
+            release_corridor.wait(timeout=10)
+            return httpx.Response(429, headers={"Retry-After": "60"})
+        corridor_requested.wait(timeout=10)
+        return httpx.Response(429, headers={"Retry-After": "7"})
+
+    open_meteo.route.side_effect = respond
+
+    started = time.monotonic()
+    response = post_plan(client)
+    waited = time.monotonic() - started
+    release_corridor.set()
+
+    assert response.status_code == 429
+    assert response.json()["details"] == {"retry_after_seconds": 7}
+    assert waited < 3
 
 
 def test_a_plan_is_not_held_back_by_a_heatmap_head_start_that_fails(

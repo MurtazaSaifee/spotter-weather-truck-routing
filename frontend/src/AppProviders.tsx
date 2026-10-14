@@ -16,10 +16,7 @@ interface AppProvidersProps {
   queryClient?: QueryClient;
 }
 
-export function AppProviders({
-  children,
-  queryClient = appQueryClient,
-}: AppProvidersProps) {
+export function AppProviders({ children, queryClient = appQueryClient }: AppProvidersProps) {
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />

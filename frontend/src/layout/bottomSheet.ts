@@ -32,7 +32,11 @@ interface Metrics {
 }
 
 /** How far down, in px, the sheet sits at each snap (0 is fully open). */
-export function sheetOffsets({ sheetHeight, rootHeight, safeBottom }: Metrics): Record<SheetSnap, number> {
+export function sheetOffsets({
+  sheetHeight,
+  rootHeight,
+  safeBottom,
+}: Metrics): Record<SheetSnap, number> {
   const collapsed = Math.max(0, sheetHeight - SHEET_HEADER_HEIGHT - safeBottom);
   const half = Math.min(collapsed, Math.max(0, sheetHeight - Math.round(rootHeight * HALF_SHARE)));
   return { collapsed, half, full: 0 };

@@ -64,15 +64,22 @@ export class HeatmapPainter {
   }
 
   private readonly step = (now: number) => {
+    // Cleared whatever happens: a paint that throws must not leave `frame` set, or `show` would
+    // never ask for another one.
+    this.frame = 0;
     if (!this.frames) return;
-    const animating = this.fader.advance(now);
-    this.options.underlay.set(
-      createHeatmapLayers({
-        slots: this.fader.slots(),
-        bounds: this.frames.bounds,
-        beforeId: this.options.beforeId,
-      }),
-    );
-    this.frame = animating ? requestAnimationFrame(this.step) : 0;
+    let animating = false;
+    try {
+      animating = this.fader.advance(now);
+      this.options.underlay.set(
+        createHeatmapLayers({
+          slots: this.fader.slots(),
+          bounds: this.frames.bounds,
+          beforeId: this.options.beforeId,
+        }),
+      );
+    } finally {
+      if (animating) this.frame = requestAnimationFrame(this.step);
+    }
   };
 }

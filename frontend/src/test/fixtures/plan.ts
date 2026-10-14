@@ -221,8 +221,20 @@ export const chicagoToDallasStormOnRouteOne: Plan = {
 export const chicagoToDallasAllBlocked: Plan = {
   ...chicagoToDallas,
   routes: [
-    { ...routeOne, blocked: true, risk_miles: { ...routeOne.risk_miles, no_travel: 25 }, rank: 1, deciding: null },
-    { ...routeTwo, blocked: true, risk_miles: { ...routeTwo.risk_miles, no_travel: 50 }, rank: 2, deciding: null },
+    {
+      ...routeOne,
+      blocked: true,
+      risk_miles: { ...routeOne.risk_miles, no_travel: 25 },
+      rank: 1,
+      deciding: null,
+    },
+    {
+      ...routeTwo,
+      blocked: true,
+      risk_miles: { ...routeTwo.risk_miles, no_travel: 50 },
+      rank: 2,
+      deciding: null,
+    },
     { ...routeThree, rank: 3, deciding: null },
   ],
   recommended_route_id: null,

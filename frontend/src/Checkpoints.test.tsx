@@ -46,7 +46,8 @@ async function planTrip(user: UserEvent) {
 }
 
 const intervalGroup = () => screen.getByRole('group', { name: 'Checkpoint interval' });
-const interval = (miles: number) => within(intervalGroup()).getByRole('button', { name: `${miles} mi` });
+const interval = (miles: number) =>
+  within(intervalGroup()).getByRole('button', { name: `${miles} mi` });
 
 beforeEach(() => {
   vi.useFakeTimers({ toFake: ['Date'] });
@@ -119,7 +120,7 @@ describe('checkpoint interval', () => {
 });
 
 describe('checkpoints on the map', () => {
-  it('gives the map every route\'s checkpoints', async () => {
+  it("gives the map every route's checkpoints", async () => {
     answerPlans();
     const user = userEvent.setup();
     renderApp();
@@ -128,11 +129,15 @@ describe('checkpoints on the map', () => {
 
     const map = screen.getByRole('region', { name: 'Map' });
     for (const route of [1, 2, 3]) {
-      expect(within(map).getAllByRole('button', { name: new RegExp(`^Route ${route} checkpoint at mile`) })).toHaveLength(3);
+      expect(
+        within(map).getAllByRole('button', {
+          name: new RegExp(`^Route ${route} checkpoint at mile`),
+        }),
+      ).toHaveLength(3);
     }
   });
 
-  it('shows a checkpoint\'s mile, ETA in the origin zone and covered miles', async () => {
+  it("shows a checkpoint's mile, ETA in the origin zone and covered miles", async () => {
     answerPlans();
     const user = userEvent.setup();
     renderApp();
@@ -293,13 +298,10 @@ describe('risk legend', () => {
 
     const legend = screen.getByRole('region', { name: 'Risk legend' });
 
-    expect(within(legend).getAllByRole('listitem').map((item) => item.textContent)).toEqual([
-      'Low',
-      'Moderate',
-      'High',
-      'Severe',
-      'No Travel',
-      'No data',
-    ]);
+    expect(
+      within(legend)
+        .getAllByRole('listitem')
+        .map((item) => item.textContent),
+    ).toEqual(['Low', 'Moderate', 'High', 'Severe', 'No Travel', 'No data']);
   });
 });

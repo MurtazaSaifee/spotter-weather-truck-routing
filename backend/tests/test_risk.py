@@ -308,10 +308,63 @@ def test_missing_sustained_wind_rain_or_snow_is_no_data_never_low():
         assert result.conditions[missing] is None
 
 
-def test_no_data_still_reports_the_conditions_that_are_known():
-    result = classify_one(wind=60.0, rain=None)
+# A known value below No Travel could still be raised by the missing ones, so it stays No data.
+KNOWN_BELOW_NO_TRAVEL = [
+    {"wind": 50.0, "rain": None},  # Severe wind
+    {"wind": 40.0, "snow": None},  # High wind
+    {"wind": 5.0, "rain": 0.9, "snow": None},  # Severe rain
+    {"wind": None, "rain": 0.0, "snow": 2.9},  # Severe snow
+    {"wind": None, "rain": None, "snow": 0.0},
+]
+
+
+@pytest.mark.parametrize("values", KNOWN_BELOW_NO_TRAVEL)
+def test_a_known_level_below_no_travel_stays_no_data(values):
+    result = classify(
+        **{
+            "wind_mph": values.get("wind", 0.0),
+            "gust_mph": None,
+            "rain_in_hr": values.get("rain", 0.0),
+            "snow_in_hr": values.get("snow", 0.0),
+            "load_lb": LIGHT,
+        }
+    )
 
     assert result.level is None
+    assert result.score is None
+    assert result.driving == ()
+
+
+# A known No Travel cannot be raised by what is missing: it stands, driven by what is known.
+KNOWN_NO_TRAVEL = [
+    # (wind, rain, snow, load), drivers, combined, score; the level is always No Travel
+    ((60.0, 0.0, None, LIGHT), ("wind",), (), 4.0),  # wind 60 mph, snow missing
+    ((60.0, None, 0.0, LIGHT), ("wind",), (), 4.0),
+    ((60.0, None, None, LIGHT), ("wind",), (), 4.0),
+    ((50.0, 0.0, None, 35_000), ("wind",), (), 4.0),  # Severe wind, heavy load: No Travel
+    ((5.0, 1.0, None, LIGHT), ("rain",), (), 4.0),  # rain on the No Travel edge
+    ((None, 0.0, 3.0, LIGHT), ("snow",), (), 4.0),
+    ((None, 1.5, 3.5, LIGHT), ("rain", "snow"), ("rain", "snow"), 4.5),  # wind missing
+    ((30.0, 1.5, None, LIGHT), ("rain",), ("wind", "rain"), 4.5),  # Moderate wind stacks
+]
+
+
+@pytest.mark.parametrize(("inputs", "driving", "combined", "score"), KNOWN_NO_TRAVEL)
+def test_a_known_no_travel_beats_missing_data(inputs, driving, combined, score):
+    wind, rain, snow, load = inputs
+
+    result = classify(wind_mph=wind, gust_mph=None, rain_in_hr=rain, snow_in_hr=snow, load_lb=load)
+
+    assert result.level == NO_TRAVEL
+    assert result.driving == driving
+    assert result.combined == combined
+    assert result.score == score
+
+
+def test_a_known_no_travel_still_reports_the_conditions_that_are_missing():
+    result = classify_one(wind=60.0, rain=None)
+
+    assert result.level == NO_TRAVEL
     assert result.conditions == {"wind": NO_TRAVEL, "rain": None, "snow": LOW}
 
 

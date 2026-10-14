@@ -13,6 +13,7 @@ import {
 import type { Heatmap } from '../heatmap/payload';
 import type { PlannedRoute } from '../api/plan';
 import type { Place } from '../api/places';
+import { TOUCH_TARGET } from '../theme';
 import { useTruckTrack } from '../truck/useTruckTrack';
 import { CheckpointDetails } from './CheckpointDetails';
 import {
@@ -20,7 +21,6 @@ import {
   createCheckpointLayers,
   dotAt,
   nearestDot,
-  TOUCH_TARGET_PX,
   type CheckpointDot,
 } from './checkpointLayers';
 import { DeckGLOverlay } from './DeckGLOverlay';
@@ -166,7 +166,7 @@ export default function TripMap({
           const { x, y } = map.project(position);
           return [x, y];
         },
-        TOUCH_TARGET_PX / 2,
+        TOUCH_TARGET / 2,
       );
       if (near) return setPinned(describe(near));
     }

@@ -37,15 +37,19 @@ export function MapFraming({ origin, destination, routes, insets }: MapFramingPr
   // that, and a resize then leaves the camera alone.
   const following = useRef(true);
   const latestInsets = useRef(insets);
-  // The padding arrives as an object that changes identity each render; its values are what count.
-  const insetsKey = JSON.stringify(insets ?? {});
+  // The insets arrive as an object that changes identity each render; its values are what count.
+  const { top = 0, right = 0, bottom = 0, left = 0 } = insets ?? {};
 
   const fit = (animate: boolean) => {
     if (!map || !target.current) return;
     const { clientWidth, clientHeight } = map.getContainer();
     const padding = fitPadding(clientWidth, clientHeight, latestInsets.current);
     // Before the first layout the map has no size to fit into; the resize that follows fits it.
-    if (clientWidth - padding.left - padding.right < 1 || clientHeight - padding.top - padding.bottom < 1) return;
+    if (
+      clientWidth - padding.left - padding.right < 1 ||
+      clientHeight - padding.top - padding.bottom < 1
+    )
+      return;
     map.fitBounds(target.current.bounds, {
       padding,
       maxZoom: target.current.maxZoom,
@@ -101,7 +105,7 @@ export function MapFraming({ origin, destination, routes, insets }: MapFramingPr
   // A different layout (a sheet resting at another height) frames the same data differently.
   useEffect(() => {
     if (following.current) refit.current(true);
-  }, [insetsKey]);
+  }, [top, right, bottom, left]);
 
   // Resizing the window or the panel changes how much map there is: keep the data in view.
   useEffect(() => {

@@ -3,6 +3,8 @@ import { ApiError } from './api/client';
 import { type HeatmapRequest, useHeatmap } from './api/heatmap';
 import { type Plan, type PlanRequest, type SamplingInterval, usePlanTrip } from './api/plan';
 import type { Place } from './api/places';
+import { HeatmapBuildContext } from './heatmap/buildStatus';
+import type { Heatmap } from './heatmap/payload';
 import { createForecastHourStore, ForecastHourContext } from './heatmap/forecastHour';
 import { HeatmapControls, type HeatmapStatus } from './heatmap/HeatmapControls';
 import { DEFAULT_HEATMAP_LAYER, type HeatmapLayer, HeatmapLayerContext } from './heatmap/layer';
@@ -48,9 +50,18 @@ export default function App() {
     [plan, submitted],
   );
   const heatmap = useHeatmap(heatmapRequest);
+  // The map builds the heatmap's pictures in a worker. If that fails the heatmap counts as not
+  // loaded, and the retry starts the worker again (`buildAttempt`) rather than asking the API.
+  const [buildFailedFor, setBuildFailedFor] = useState<Heatmap | null>(null);
+  const [buildAttempt, setBuildAttempt] = useState(0);
+  const heatmapBuild = useMemo(
+    () => ({ attempt: buildAttempt, onFailed: setBuildFailedFor }),
+    [buildAttempt],
+  );
+  const buildFailed = heatmap.data !== undefined && buildFailedFor === heatmap.data;
   const heatmapStatus: HeatmapStatus = !plan
     ? 'idle'
-    : heatmap.isError
+    : heatmap.isError || buildFailed
       ? 'error'
       : heatmap.data
         ? 'ready'
@@ -58,6 +69,15 @@ export default function App() {
 
   const summary = sheetSummary(plan, planTrip.isPending);
   const planError = planTrip.error instanceof ApiError ? planTrip.error : null;
+
+  function retryHeatmap() {
+    if (buildFailed) {
+      setBuildFailedFor(null);
+      setBuildAttempt((count) => count + 1);
+    } else {
+      void heatmap.refetch();
+    }
+  }
 
   function handlePlan(request: PlanRequest) {
     setSubmitted(request);
@@ -82,51 +102,53 @@ export default function App() {
   return (
     <ForecastHourContext.Provider value={forecastHour}>
       <HeatmapLayerContext.Provider value={heatmapLayer}>
-        <AppShell
-          resultsKey={tripsPlanned}
-          sheetTitle={summary.title}
-          sheetSubtitle={summary.subtitle}
-          panel={
-            <PlannerPanel
-              origin={origin}
-              onOriginChange={setOrigin}
-              destination={destination}
-              onDestinationChange={setDestination}
-              onPlan={handlePlan}
-              isPlanning={planTrip.isPending}
-              planError={planError}
-              planRateLimitWait={planTrip.rateLimitWait}
-              plan={plan}
-              selectedRouteId={selectedRouteId}
-              onSelectRoute={setSelectedRouteId}
-              onIntervalChange={handleIntervalChange}
-            />
-          }
-          map={
-            <MapView
-              origin={origin}
-              destination={destination}
-              routes={plan?.routes ?? []}
-              heatmap={heatmap.data ?? null}
-              timeZone={plan?.origin_time_zone ?? null}
-              selectedRouteId={selectedRouteId}
-              recommendedRouteId={plan?.recommended_route_id ?? null}
-              onSelectRoute={setSelectedRouteId}
-            />
-          }
-          controls={
-            <HeatmapControls
-              status={heatmapStatus}
-              rateLimitWait={heatmap.rateLimitWait}
-              departure={plan?.departure ?? null}
-              timeZone={plan?.origin_time_zone ?? null}
-              layer={heatmapLayer}
-              onLayerChange={setHeatmapLayer}
-              route={plan?.routes.find(({ id }) => id === selectedRouteId) ?? null}
-              onRetry={() => void heatmap.refetch()}
-            />
-          }
-        />
+        <HeatmapBuildContext.Provider value={heatmapBuild}>
+          <AppShell
+            resultsKey={tripsPlanned}
+            sheetTitle={summary.title}
+            sheetSubtitle={summary.subtitle}
+            panel={
+              <PlannerPanel
+                origin={origin}
+                onOriginChange={setOrigin}
+                destination={destination}
+                onDestinationChange={setDestination}
+                onPlan={handlePlan}
+                isPlanning={planTrip.isPending}
+                planError={planError}
+                planRateLimitWait={planTrip.rateLimitWait}
+                plan={plan}
+                selectedRouteId={selectedRouteId}
+                onSelectRoute={setSelectedRouteId}
+                onIntervalChange={handleIntervalChange}
+              />
+            }
+            map={
+              <MapView
+                origin={origin}
+                destination={destination}
+                routes={plan?.routes ?? []}
+                heatmap={heatmap.data ?? null}
+                timeZone={plan?.origin_time_zone ?? null}
+                selectedRouteId={selectedRouteId}
+                recommendedRouteId={plan?.recommended_route_id ?? null}
+                onSelectRoute={setSelectedRouteId}
+              />
+            }
+            controls={
+              <HeatmapControls
+                status={heatmapStatus}
+                rateLimitWait={heatmap.rateLimitWait}
+                departure={plan?.departure ?? null}
+                timeZone={plan?.origin_time_zone ?? null}
+                layer={heatmapLayer}
+                onLayerChange={setHeatmapLayer}
+                route={plan?.routes.find(({ id }) => id === selectedRouteId) ?? null}
+                onRetry={retryHeatmap}
+              />
+            }
+          />
+        </HeatmapBuildContext.Provider>
       </HeatmapLayerContext.Provider>
     </ForecastHourContext.Provider>
   );

@@ -1,5 +1,5 @@
 import { useMutation } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { apiPost } from './client';
 import type { Place } from './places';
 import { type RateLimitWait, retryOnceAfterRateLimit } from './rateLimit';
@@ -84,11 +84,7 @@ export interface RiskMiles {
 
 /** What separated the recommended route from another one. */
 export type DecidingCriterion =
-  | 'blocked'
-  | 'severe_miles'
-  | 'high_miles'
-  | 'average_risk'
-  | 'travel_time';
+  'blocked' | 'severe_miles' | 'high_miles' | 'average_risk' | 'travel_time';
 
 /** Why the recommended route beat one alternative, with both values. */
 export interface Deciding {
@@ -159,9 +155,21 @@ export interface Plan {
  */
 export function usePlanTrip() {
   const [rateLimitWait, setRateLimitWait] = useState<RateLimitWait | null>(null);
+  // The plan being asked for. Starting another plan, or leaving the page, cancels it: its
+  // countdown stops and its retry is never sent.
+  const current = useRef<AbortController | null>(null);
+  useEffect(() => () => current.current?.abort(), []);
   const mutation = useMutation({
-    mutationFn: (request: PlanRequest) =>
-      retryOnceAfterRateLimit(() => apiPost<Plan>('/api/plan', request), setRateLimitWait),
+    mutationFn: (request: PlanRequest) => {
+      current.current?.abort();
+      const own = new AbortController();
+      current.current = own;
+      return retryOnceAfterRateLimit(
+        () => apiPost<Plan>('/api/plan', request, { signal: own.signal }),
+        setRateLimitWait,
+        own.signal,
+      );
+    },
   });
   return { ...mutation, rateLimitWait };
 }

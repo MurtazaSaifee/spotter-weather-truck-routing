@@ -10,8 +10,7 @@ interface ApiErrorInit extends ErrorBody {
 }
 
 const NETWORK_ERROR_CODE = 'network_error';
-const NETWORK_ERROR_MESSAGE =
-  "We couldn't reach the server. Check your connection and try again.";
+const NETWORK_ERROR_MESSAGE = "We couldn't reach the server. Check your connection and try again.";
 
 /** The error codes of a 429 that clears by itself: the weather service's or our own limit. */
 const RATE_LIMIT_CODES = ['weather_rate_limited', 'rate_limit_exceeded'];
@@ -109,9 +108,6 @@ export function apiPost<T>(
   });
 }
 
-export function apiGet<T>(
-  path: string,
-  options: { signal?: AbortSignal } = {},
-): Promise<T> {
+export function apiGet<T>(path: string, options: { signal?: AbortSignal } = {}): Promise<T> {
   return request<T>(path, { method: 'GET', signal: options.signal });
 }

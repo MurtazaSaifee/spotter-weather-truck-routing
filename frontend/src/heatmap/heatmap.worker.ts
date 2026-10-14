@@ -8,6 +8,14 @@ export interface FrameResponse {
   bounds: Bounds;
 }
 
+/** What the worker answers when it could not build a layer. */
+export interface FrameFailure {
+  layer: HeatmapLayer;
+  failed: true;
+}
+
+export type FrameMessage = FrameResponse | FrameFailure;
+
 /**
  * Builds a layer's bitmaps off the main thread, so a 49-frame build never delays a slider drag
  * or a map pan. The bitmaps are transferred, not copied. It holds nothing between requests:
@@ -15,11 +23,12 @@ export interface FrameResponse {
  */
 const scope = self as unknown as {
   addEventListener(type: 'message', listener: (event: MessageEvent<FrameRequest>) => void): void;
-  postMessage(message: FrameResponse, transfer: Transferable[]): void;
+  postMessage(message: FrameMessage, transfer: Transferable[]): void;
 };
 
 scope.addEventListener('message', (event) => {
-  void respond(event.data);
+  // An async function's failure is not an `error` event on the page's side, so it is reported.
+  respond(event.data).catch(() => scope.postMessage({ layer: event.data.layer, failed: true }, []));
 });
 
 async function respond(request: FrameRequest) {

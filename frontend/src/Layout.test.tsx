@@ -87,7 +87,9 @@ describe('on a desktop', () => {
     renderApp();
     await planChicagoToDallas(user);
 
-    const cards = within(await screen.findByRole('region', { name: 'Routes' })).getAllByRole('button');
+    const cards = within(await screen.findByRole('region', { name: 'Routes' })).getAllByRole(
+      'button',
+    );
     const unselected = cards.find((card) => card.getAttribute('aria-pressed') === 'false');
     expect(unselected).toBeDefined();
     unselected!.focus();

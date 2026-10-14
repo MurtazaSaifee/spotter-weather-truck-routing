@@ -183,7 +183,11 @@ describe('risk frames', () => {
 
   it('builds a frame for every hour from that hour’s values', () => {
     const heatmap = heatmapOf([[0, 0]], 3);
-    heatmap.frames.risk = [[0, 0], [4, 4], [1, 1]];
+    heatmap.frames.risk = [
+      [0, 0],
+      [4, 4],
+      [1, 1],
+    ];
 
     const frames = buildRiskFrames(heatmap);
 

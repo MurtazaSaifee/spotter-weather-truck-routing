@@ -4,13 +4,12 @@ import type { PlannedRoute } from '../api/plan';
 import type { Insets } from './framing';
 import type { LayerStore } from './layerStore';
 import type { LngLat } from './polyline';
-import type { RoutePath } from './routeLayers';
+import { ROLE_STYLES, routeRole, type RoutePath } from './routeLayers';
 import {
   createRouteLabelLayer,
   labelSize,
   placeLabels,
   routeLabelText,
-  type LabelTone,
   type RouteLabel,
 } from './routeLabels';
 
@@ -51,8 +50,8 @@ export function LabelPlacement({
   const { current: map } = useMap();
   // Where the labels were last put, so that they stay put while that is still a good place.
   const previous = useRef<Record<string, LngLat>>({});
-  // The padding arrives as an object that changes identity each render; its values are what count.
-  const insetsKey = JSON.stringify(insets ?? {});
+  // The insets arrive as an object that changes identity each render; its values are what count.
+  const { top = 0, right = 0, bottom = 0, left = 0 } = insets ?? {};
 
   useEffect(() => {
     if (!map) return;
@@ -69,22 +68,21 @@ export function LabelPlacement({
           }),
         ]),
       );
-      const toneOf = (route: PlannedRoute): LabelTone =>
-        route.id === selectedRouteId
-          ? 'selected'
-          : route.id === recommendedRouteId
-            ? 'recommended'
-            : route.blocked
-              ? 'blocked'
-              : 'plain';
-      const priorityOf = (route: PlannedRoute) =>
-        route.id === selectedRouteId ? 3 : route.id === recommendedRouteId ? 2 : route.blocked ? 0 : 1;
+      const styleOf = (route: PlannedRoute) =>
+        ROLE_STYLES[routeRole(route.id, route.blocked, { selectedRouteId, recommendedRouteId })];
 
       const anchors = placeLabels(
         routes.flatMap((route) => {
           const path = paths.find(({ id }) => id === route.id)?.path;
           return path
-            ? [{ id: route.id, path, size: labelSize(texts.get(route.id)!), priority: priorityOf(route) }]
+            ? [
+                {
+                  id: route.id,
+                  path,
+                  size: labelSize(texts.get(route.id)!),
+                  priority: styleOf(route).labelPriority,
+                },
+              ]
             : [];
         }),
         {
@@ -94,7 +92,7 @@ export function LabelPlacement({
           },
           width,
           height,
-          padding: insets,
+          padding: { top, right, bottom, left },
         },
         previous.current,
       );
@@ -107,7 +105,7 @@ export function LabelPlacement({
                 routeId: route.id,
                 text: texts.get(route.id)!,
                 position: anchors[route.id],
-                tone: toneOf(route),
+                tone: styleOf(route).tone,
               },
             ]
           : [],
@@ -123,9 +121,20 @@ export function LabelPlacement({
       raw.off('resize', place);
       layers.set([]);
     };
-    // `insetsKey` stands for the insets' values.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [map, routes, paths, names, selectedRouteId, recommendedRouteId, onSelectRoute, insetsKey, layers]);
+  }, [
+    map,
+    routes,
+    paths,
+    names,
+    selectedRouteId,
+    recommendedRouteId,
+    onSelectRoute,
+    top,
+    right,
+    bottom,
+    left,
+    layers,
+  ]);
 
   return null;
 }

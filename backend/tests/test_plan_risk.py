@@ -157,3 +157,22 @@ def test_a_checkpoint_without_a_forecast_is_no_data_and_not_low(client, outbound
     assert no_data["conditions"]["wind"] is None
     (route,) = response.json()["routes"]
     assert route["checkpoints"][2]["weather"] is None
+
+
+def test_a_known_no_travel_blocks_the_route_even_with_other_values_missing(
+    client, outbound_http, open_meteo
+):
+    # Wind 60 mph is No Travel whatever the snow is; no snow reading at any hour the route reads.
+    forecast(open_meteo, wind=60.0)
+    open_meteo.edit("snowfall", {hour: None for hour in ALL_HOURS})
+
+    response = plan(client, outbound_http)
+
+    checkpoints = risks(response)
+    assert {risk["level"] for risk in checkpoints} == {"no_travel"}
+    assert {tuple(risk["driving"]) for risk in checkpoints} == {("wind",)}
+    assert {risk["conditions"]["snow"] for risk in checkpoints} == {None}
+    (route,) = response.json()["routes"]
+    assert route["blocked"] is True
+    assert response.json()["recommended_route_id"] is None
+    assert response.json()["all_blocked_warning"]["code"] == "all_routes_blocked"

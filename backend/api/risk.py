@@ -85,7 +85,10 @@ def classify(
     """Classify a checkpoint. ``None`` means the forecast has no value.
 
     Sustained wind, rain or snow missing makes the checkpoint No data: it is never taken as
-    Low. A missing gust only leaves out the gust warning.
+    Low. The one exception is a known No Travel: it is the top level, so what is missing cannot
+    change it, and the checkpoint is No Travel driven by the known conditions. Every lower known
+    level stays No data, because the missing values could raise it. A missing gust only leaves
+    out the gust warning.
     """
     wind = None if wind_mph is None else wind_level(wind_mph, load_lb)
     rain = None if rain_in_hr is None else _band(RAIN_EDGES_IN_HR, rain_in_hr)
@@ -93,12 +96,14 @@ def classify(
     conditions = {"wind": wind, "rain": rain, "snow": snow}
     raised = wind_mph is not None and wind != _band(WIND_EDGES_MPH, wind_mph)
 
-    if wind is None or rain is None or snow is None:
+    known = {name: level for name, level in conditions.items() if level is not None}
+    level = max(known.values(), default=None)
+    if len(known) < len(conditions) and level != Level.NO_TRAVEL:
         return Classification(None, conditions, (), (), None, None, raised)
 
-    level = max(wind, rain, snow)
-    driving = tuple(name for name in CONDITIONS if conditions[name] == level)
-    stacked = tuple(name for name in CONDITIONS if conditions[name] >= Level.MODERATE)
+    assert level is not None  # some condition is known: all of them, or a No Travel
+    driving = tuple(name for name in known if known[name] == level)
+    stacked = tuple(name for name in known if known[name] >= Level.MODERATE)
     combined = stacked if len(stacked) >= 2 else ()
     return Classification(
         level=level,
@@ -106,7 +111,7 @@ def classify(
         driving=driving if level > Level.LOW else (),
         combined=combined,
         score=level.score + (COMBINED_BONUS if combined else 0),
-        gust_warning=_gust_warning(gust_mph, wind, load_lb),
+        gust_warning=_gust_warning(gust_mph, wind if wind is not None else Level.LOW, load_lb),
         wind_raised_by_load=raised,
     )
 

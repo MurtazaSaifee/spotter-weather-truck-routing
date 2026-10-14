@@ -103,6 +103,11 @@ SPECTACULAR_SETTINGS = {
     "DESCRIPTION": "Plans a truck route and reports the weather expected along it.",
     "VERSION": "1.0.0",
     "SERVE_INCLUDE_SCHEMA": False,
+    # Setting the list replaces drf-spectacular's default, which names the enums.
+    "POSTPROCESSING_HOOKS": [
+        "drf_spectacular.hooks.postprocess_schema_enums",
+        "api.schema_examples.set_example_departures",
+    ],
     "SWAGGER_UI_DIST": SWAGGER_UI_DIST,
     "SWAGGER_UI_FAVICON_HREF": f"{SWAGGER_UI_DIST}/favicon-32x32.png",
     "ENUM_NAME_OVERRIDES": {

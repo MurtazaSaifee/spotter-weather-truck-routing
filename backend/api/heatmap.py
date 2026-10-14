@@ -25,11 +25,11 @@ from datetime import UTC, datetime, timedelta
 from functools import cache
 
 from . import risk, weather
-from .geo import METRES_PER_DEGREE, Point, RouteIndex, sample_along
+from .geo import METRES_PER_DEGREE, METRES_PER_MILE, Point, RouteIndex, sample_along
 from .lattice import POINTS_PER_DEGREE, LatticePoint, snap_unique
 
-MILE_M = 1609.344
-CORRIDOR_RADIUS_M = 25 * MILE_M
+CORRIDOR_RADIUS_MILES = 25
+CORRIDOR_RADIUS_M = CORRIDOR_RADIUS_MILES * METRES_PER_MILE
 MAX_POINTS = 500
 # The grid is every n-th lattice point. Two steps of 0.05 degrees is the finest allowed.
 MIN_STEP = 2
@@ -37,7 +37,7 @@ FRAME_HOURS = 49  # departure + 0 h to departure + 48 h
 
 # Candidate lattice points are looked for around samples of each route this far apart; a
 # point within the radius of the route is then within the radius plus half of this of a sample.
-_SAMPLE_STEP_M = 10 * MILE_M
+_SAMPLE_STEP_M = 10 * METRES_PER_MILE
 _CANDIDATE_REACH_M = CORRIDOR_RADIUS_M + _SAMPLE_STEP_M / 2
 
 # The frames' integers. A missing forecast is ``MISSING`` in every array.

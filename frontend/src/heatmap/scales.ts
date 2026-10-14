@@ -1,3 +1,5 @@
+import { rgb } from '../map/colour';
+
 /** The weather behind the risk, one layer each. */
 export type WeatherLayer = 'wind' | 'rain' | 'snow';
 
@@ -50,15 +52,14 @@ const STEPS = 257;
  * a lookup rather than a blend.
  */
 export function colourTable({ stops }: Pick<WeatherScale, 'stops'>): [number, number, number][] {
-  const rgb = stops.map((hex) => {
-    const value = parseInt(hex.slice(1), 16);
-    return [(value >> 16) & 255, (value >> 8) & 255, value & 255];
-  });
+  const colours = stops.map(rgb);
   return Array.from({ length: STEPS }, (_, step) => {
-    const position = (step / (STEPS - 1)) * (rgb.length - 1);
-    const lower = Math.min(rgb.length - 2, Math.floor(position));
+    const position = (step / (STEPS - 1)) * (colours.length - 1);
+    const lower = Math.min(colours.length - 2, Math.floor(position));
     const t = position - lower;
-    const [r, g, b] = rgb[lower].map((from, i) => Math.round(from + (rgb[lower + 1][i] - from) * t));
+    const [r, g, b] = colours[lower].map((from, i) =>
+      Math.round(from + (colours[lower + 1][i] - from) * t),
+    );
     return [r, g, b];
   });
 }

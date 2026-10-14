@@ -91,7 +91,10 @@ export function HeatmapControls({
           </Typography>
         )}
         {status === 'loading' && (
-          <Box role="status" sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1.5 }}>
+          <Box
+            role="status"
+            sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1.5 }}
+          >
             <CircularProgress size={18} thickness={5} aria-hidden />
             <Typography variant="body2">
               {rateLimitWait ? describeWait(rateLimitWait) : 'Checking forecasts…'}
@@ -116,7 +119,12 @@ export function HeatmapControls({
                 display: 'flex',
                 flexDirection: 'column',
                 gap: 0.75,
-                [WIDE]: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 2 },
+                [WIDE]: {
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: 2,
+                },
               }}
             >
               <LayerToggle layer={layer} onChange={onLayerChange} />
@@ -169,7 +177,12 @@ function LayerToggle({
       sx={{
         flex: 'none',
         // Narrow: the four buttons share the strip, each a thumb wide.
-        '& .MuiToggleButton-root': { flex: 1, px: 1.5, py: 0.25, [WIDE]: { flex: 'none', minWidth: 56 } },
+        '& .MuiToggleButton-root': {
+          flex: 1,
+          px: 1.5,
+          py: 0.25,
+          [WIDE]: { flex: 'none', minWidth: 56 },
+        },
       }}
     >
       {HEATMAP_LAYERS.map(({ layer: value, label }) => (

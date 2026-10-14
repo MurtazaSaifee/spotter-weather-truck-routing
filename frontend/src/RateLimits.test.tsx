@@ -129,6 +129,23 @@ describe('a rate-limited plan', () => {
   });
 });
 
+describe('a plan counting down to its retry', () => {
+  it('does not ask again once the page is gone', async () => {
+    const calls = answerWith({
+      plan: [() => weatherBusy(3), () => HttpResponse.json(chicagoToDallas)],
+    });
+    const user = startUser();
+    const { unmount } = renderApp();
+    await planChicagoToDallas(user);
+    await screen.findByText(/Trying again in 3 s/);
+
+    unmount();
+    await tick(10);
+
+    expect(calls.plan).toBe(1);
+  });
+});
+
 describe('a visitor limit that lasts most of an hour', () => {
   it('shows the message without a countdown and does not retry', async () => {
     const calls = answerWith({ plan: [() => visitorLimited(40 * 60)] });
@@ -161,14 +178,20 @@ describe('a rate-limited heatmap', () => {
 
     await tick(2);
 
-    expect(await screen.findByRole('slider', { name: 'Hours after departure' })).toBeInTheDocument();
+    expect(
+      await screen.findByRole('slider', { name: 'Hours after departure' }),
+    ).toBeInTheDocument();
     expect(calls.heatmap).toBe(2);
     expect(screen.getByText('Route 1')).toBeInTheDocument();
   });
 
   it('gives up after the one retry, keeps the routes and offers a manual retry', async () => {
     const calls = answerWith({
-      heatmap: [() => visitorLimited(2), () => visitorLimited(2), () => HttpResponse.json(heatmapOfChicagoToDallas)],
+      heatmap: [
+        () => visitorLimited(2),
+        () => visitorLimited(2),
+        () => HttpResponse.json(heatmapOfChicagoToDallas),
+      ],
     });
     const user = startUser();
     renderApp();
@@ -177,13 +200,17 @@ describe('a rate-limited heatmap', () => {
 
     await tick(2);
 
-    expect(await screen.findByText('The forecast heatmap could not be loaded.')).toBeInTheDocument();
+    expect(
+      await screen.findByText('The forecast heatmap could not be loaded.'),
+    ).toBeInTheDocument();
     expect(screen.getByText('Route 3')).toBeInTheDocument();
     await tick(60);
     expect(calls.heatmap).toBe(2);
 
     await user.click(screen.getByRole('button', { name: 'Retry' }));
-    expect(await screen.findByRole('slider', { name: 'Hours after departure' })).toBeInTheDocument();
+    expect(
+      await screen.findByRole('slider', { name: 'Hours after departure' }),
+    ).toBeInTheDocument();
   });
 });
 

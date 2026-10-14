@@ -12,9 +12,13 @@ export interface SheetSummary {
  * then progress, then the recommendation, so the answer is visible with the sheet down.
  */
 export function sheetSummary(plan: Plan | null, isPlanning: boolean): SheetSummary {
-  if (isPlanning && !plan) return { title: 'Planning your trip', subtitle: 'Comparing routes and forecasts' };
+  if (isPlanning && !plan)
+    return { title: 'Planning your trip', subtitle: 'Comparing routes and forecasts' };
   if (!plan) {
-    return { title: 'Weather-Aware Truck Routing', subtitle: 'Plan the safest route for the weather ahead' };
+    return {
+      title: 'Weather-Aware Truck Routing',
+      subtitle: 'Plan the safest route for the weather ahead',
+    };
   }
   const recommended = plan.routes.find((route) => route.id === plan.recommended_route_id);
   if (!recommended) {

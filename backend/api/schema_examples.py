@@ -5,9 +5,42 @@ schema and that the error examples cover every code the API raises, so the docs 
 from the code unnoticed.
 """
 
+from datetime import UTC, datetime, timedelta
+
 from drf_spectacular.utils import OpenApiExample, OpenApiResponse
 
-from .serializers import ErrorSerializer
+from .checkpoints import INTERVAL_CHOICES
+from .serializers import (
+    DEPARTURE_HORIZON,
+    MAX_LOAD_WEIGHT_LB,
+    ErrorSerializer,
+    departure_window_text,
+    duration_text,
+)
+
+# The requests that carry a departure, which an example must keep inside the accepted window.
+_DEPARTING_REQUESTS = ("/api/plan", "/api/heatmap")
+
+
+def example_departure() -> str:
+    """An hour after the next full hour, in UTC: always in the future and inside the window."""
+    next_hour = datetime.now(UTC).replace(minute=0, second=0, microsecond=0) + timedelta(hours=1)
+    return (next_hour + timedelta(hours=1)).isoformat()
+
+
+def set_example_departures(result, generator, request, public):
+    """drf-spectacular postprocessing hook: dates the request examples when the schema is built.
+
+    A departure written into an example goes stale, and the API rejects a departure in the
+    past, so "Try it out" in Swagger UI would fail within a day. The examples below carry a
+    placeholder that this replaces on every schema request.
+    """
+    departure = example_departure()
+    for path in _DEPARTING_REQUESTS:
+        content = result["paths"][path]["post"]["requestBody"]["content"]["application/json"]
+        for example in content["examples"].values():
+            example["value"]["departure"] = departure
+    return result
 
 
 def error_response(description: str, *examples: OpenApiExample) -> OpenApiResponse:
@@ -137,7 +170,7 @@ PLAN_REQUEST = OpenApiExample(
     value={
         "origin": _CHICAGO,
         "destination": _DALLAS,
-        "departure": "2026-10-15T08:00:00-05:00",
+        "departure": "set when the schema is built",
         "load_weight_lb": 38000,
         "interval_miles": 25,
     },
@@ -291,17 +324,20 @@ PLAN_OK = OpenApiExample(
     response_only=True,
     status_codes=["200"],
 )
+_INTERVALS = ", ".join(map(str, INTERVAL_CHOICES[:-1])) + f" or {INTERVAL_CHOICES[-1]}"
+_TOO_FAR_AHEAD = f"Departure can't be more than {duration_text(DEPARTURE_HORIZON)} ahead."
 PLAN_400 = error_response(
     "`validation_error`: a field is missing or invalid, and `details.fields` names each one. "
-    "Examples: a departure without a UTC offset or outside the window (15 minutes ago to 48 "
-    "hours ahead), a place outside North America, the same origin and destination, a load "
-    "weight outside 1 to 50,000 lb, or an interval other than 10, 25 or 50.",
+    "Examples: a departure without a UTC offset or outside the window "
+    f"({departure_window_text()}), a place outside North America, the same origin "
+    f"and destination, a load weight outside 1 to {MAX_LOAD_WEIGHT_LB:,} lb, or an interval "
+    f"other than {_INTERVALS}.",
     _error_example(
         "Departure too far ahead",
         "validation_error",
-        "departure: Departure can't be more than 48 hours ahead.",
+        f"departure: {_TOO_FAR_AHEAD}",
         "400",
-        {"fields": {"departure": ["Departure can't be more than 48 hours ahead."]}},
+        {"fields": {"departure": [_TOO_FAR_AHEAD]}},
     ),
 )
 PLAN_422 = error_response(
@@ -334,7 +370,7 @@ HEATMAP_REQUEST = OpenApiExample(
             "qos~FxuzuOxd{RljtNf_bNvojb@|srSda|C",
             "qos~FxuzuO`g|Ku}~G~~fYjlidA|qlOiokC",
         ],
-        "departure": "2026-10-15T08:00:00-05:00",
+        "departure": "set when the schema is built",
         "load_weight_lb": 38000,
     },
     request_only=True,

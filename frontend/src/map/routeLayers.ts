@@ -1,7 +1,9 @@
 import type { PickingInfo } from '@deck.gl/core';
 import { PathStyleExtension, type PathStyleExtensionProps } from '@deck.gl/extensions';
 import { PathLayer } from '@deck.gl/layers';
+import { rgb } from './colour';
 import type { LngLat } from './polyline';
+import type { LabelTone } from './routeLabels';
 
 /** A route's geometry, ready to draw. */
 export interface RoutePath {
@@ -48,10 +50,83 @@ export const ROUTE_LAYER_IDS: ReadonlySet<string> = new Set([
 
 const CASING_COLOR: [number, number, number] = [255, 255, 255];
 
-export function rgb(hex: string): [number, number, number] {
-  const value = parseInt(hex.slice(1), 16);
-  return [(value >> 16) & 255, (value >> 8) & 255, value & 255];
+/**
+ * What a route is on the map. A route is the selected one, the recommended one, both, a blocked
+ * one or just another; the first that applies wins.
+ */
+export type RouteRole = 'selectedRecommended' | 'selected' | 'recommended' | 'blocked' | 'other';
+
+export interface RouteSelection {
+  selectedRouteId: string | null;
+  recommendedRouteId: string | null;
 }
+
+export function routeRole(
+  id: string,
+  blocked: boolean,
+  { selectedRouteId, recommendedRouteId }: RouteSelection,
+): RouteRole {
+  const selected = id === selectedRouteId;
+  const recommended = id === recommendedRouteId;
+  if (selected && recommended) return 'selectedRecommended';
+  if (selected) return 'selected';
+  if (recommended) return 'recommended';
+  return blocked ? 'blocked' : 'other';
+}
+
+type ColourKey = 'selected' | 'recommended' | 'other';
+
+interface RoleStyle {
+  /** The line's width. A recommended route stays thick when it is selected too. */
+  width: number;
+  /** Which of the three colours the line takes. */
+  colour: ColourKey;
+  /** The drawing group: later groups sit on top of earlier ones. */
+  tier: ColourKey;
+  /** The label's look on the map. */
+  tone: LabelTone;
+  /** Labels are placed highest first, so the selected route gets the best spot. */
+  labelPriority: number;
+}
+
+/** How each role is drawn, in one place: the lines and the labels both read it. */
+export const ROLE_STYLES: Record<RouteRole, RoleStyle> = {
+  selectedRecommended: {
+    width: RECOMMENDED_WIDTH_PX,
+    colour: 'selected',
+    tier: 'selected',
+    tone: 'selected',
+    labelPriority: 3,
+  },
+  selected: {
+    width: SELECTED_WIDTH_PX,
+    colour: 'selected',
+    tier: 'selected',
+    tone: 'selected',
+    labelPriority: 3,
+  },
+  recommended: {
+    width: RECOMMENDED_WIDTH_PX,
+    colour: 'recommended',
+    tier: 'recommended',
+    tone: 'recommended',
+    labelPriority: 2,
+  },
+  blocked: {
+    width: OTHER_WIDTH_PX,
+    colour: 'other',
+    tier: 'other',
+    tone: 'blocked',
+    labelPriority: 0,
+  },
+  other: {
+    width: OTHER_WIDTH_PX,
+    colour: 'other',
+    tier: 'other',
+    tone: 'plain',
+    labelPriority: 1,
+  },
+};
 
 /**
  * The routes as deck.gl layers, drawn in this order so that what matters is on top: the other
@@ -69,16 +144,18 @@ export function createRouteLayers({
   recommendedColor,
   otherColor,
 }: RouteLayerOptions) {
-  const widthOf = ({ id }: RoutePath) =>
-    id === recommendedRouteId
-      ? RECOMMENDED_WIDTH_PX
-      : id === selectedRouteId
-        ? SELECTED_WIDTH_PX
-        : OTHER_WIDTH_PX;
-  const colorOf = ({ id }: RoutePath): [number, number, number, number] => {
-    if (id === selectedRouteId) return [...rgb(selectedColor), 255];
-    if (id === recommendedRouteId) return [...rgb(recommendedColor), 255];
-    return [...rgb(otherColor), selectedRouteId === null ? 255 : DIMMED_ALPHA];
+  const styleOf = ({ id }: RoutePath) =>
+    ROLE_STYLES[routeRole(id, blockedRouteIds.has(id), { selectedRouteId, recommendedRouteId })];
+  const widthOf = (route: RoutePath) => styleOf(route).width;
+  const colors: Record<ColourKey, string> = {
+    selected: selectedColor,
+    recommended: recommendedColor,
+    other: otherColor,
+  };
+  const colorOf = (route: RoutePath): [number, number, number, number] => {
+    const { colour } = styleOf(route);
+    const dimmed = colour === 'other' && selectedRouteId !== null;
+    return [...rgb(colors[colour]), dimmed ? DIMMED_ALPHA : 255];
   };
 
   const layer = (id: string, data: RoutePath[], dashed: boolean, casing = false) =>
@@ -102,16 +179,16 @@ export function createRouteLayers({
       }),
     });
 
-  const tier = (matches: (route: RoutePath) => boolean) => ({
-    solid: paths.filter((route) => matches(route) && !blockedRouteIds.has(route.id)),
-    dashed: paths.filter((route) => matches(route) && blockedRouteIds.has(route.id)),
-  });
-  const isSelected = (route: RoutePath) => route.id === selectedRouteId;
-  const isRecommended = (route: RoutePath) =>
-    route.id === recommendedRouteId && !isSelected(route);
-  const others = tier((route) => !isSelected(route) && !isRecommended(route));
-  const recommended = tier(isRecommended);
-  const selected = tier(isSelected);
+  const tier = (name: ColourKey) => {
+    const inTier = paths.filter((route) => styleOf(route).tier === name);
+    return {
+      solid: inTier.filter((route) => !blockedRouteIds.has(route.id)),
+      dashed: inTier.filter((route) => blockedRouteIds.has(route.id)),
+    };
+  };
+  const others = tier('other');
+  const recommended = tier('recommended');
+  const selected = tier('selected');
 
   return [
     layer('routes', others.solid, false),

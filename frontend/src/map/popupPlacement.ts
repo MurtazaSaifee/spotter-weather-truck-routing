@@ -1,13 +1,6 @@
 /** Which part of the popup touches the dot, as MapLibre names the anchors. */
 export type PopupAnchor =
-  | 'bottom'
-  | 'top'
-  | 'right'
-  | 'left'
-  | 'bottom-right'
-  | 'bottom-left'
-  | 'top-right'
-  | 'top-left';
+  'bottom' | 'top' | 'right' | 'left' | 'bottom-right' | 'bottom-left' | 'top-right' | 'top-left';
 
 /** How wide a checkpoint popup is, and the height it is planned for: its content is no taller. */
 export const POPUP_WIDTH_PX = 232;

@@ -12,12 +12,7 @@ import {
   useRef,
   useState,
 } from 'react';
-import {
-  SHEET_HEADER_HEIGHT,
-  SHEET_TOP_GAP,
-  type SheetSnap,
-  useBottomSheet,
-} from './bottomSheet';
+import { SHEET_HEADER_HEIGHT, SHEET_TOP_GAP, type SheetSnap, useBottomSheet } from './bottomSheet';
 import { MapInsetsContext, type MapInsets } from './mapInsets';
 
 const PANEL_WIDTH = 400;
@@ -28,7 +23,10 @@ const FLOAT_GAP = 8;
 /** Width the map's zoom buttons take at the top right (button, margin, a little air). */
 const MAP_BUTTONS_CLEARANCE = 48;
 
-const ChevronUpIcon = createSvgIcon(<path d="M7.41 15.41 12 10.83l4.59 4.58L18 14l-6-6-6 6z" />, 'ChevronUp');
+const ChevronUpIcon = createSvgIcon(
+  <path d="M7.41 15.41 12 10.83l4.59 4.58L18 14l-6-6-6 6z" />,
+  'ChevronUp',
+);
 
 /** Attribute the sheet scrolls to when a trip's results arrive. */
 export const RESULTS_ANCHOR = 'data-results';
@@ -163,7 +161,10 @@ export function AppShell({
           },
           display: 'flex',
           flexDirection: 'column',
-          transform: { xs: 'translateY(var(--sheet-y, calc(100% - 72px)))', md: 'none' },
+          transform: {
+            xs: `translateY(var(--sheet-y, calc(100% - ${SHEET_HEADER_HEIGHT}px)))`,
+            md: 'none',
+          },
           transition: 'transform 320ms cubic-bezier(0.22, 0.9, 0.3, 1)',
           '&[data-dragging="true"]': { transition: 'none' },
           willChange: { xs: 'transform', md: 'auto' },
@@ -181,7 +182,12 @@ export function AppShell({
         <Box
           ref={safeProbeRef}
           aria-hidden
-          sx={{ position: 'absolute', width: 0, height: 'env(safe-area-inset-bottom)', visibility: 'hidden' }}
+          sx={{
+            position: 'absolute',
+            width: 0,
+            height: 'env(safe-area-inset-bottom)',
+            visibility: 'hidden',
+          }}
         />
         <ButtonBase
           {...headerProps}
@@ -203,7 +209,14 @@ export function AppShell({
         >
           <Box
             aria-hidden
-            sx={{ alignSelf: 'center', width: 36, height: 4, borderRadius: 2, bgcolor: 'grey.300', mt: 1 }}
+            sx={{
+              alignSelf: 'center',
+              width: 36,
+              height: 4,
+              borderRadius: 2,
+              bgcolor: 'grey.300',
+              mt: 1,
+            }}
           />
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flex: 1, minWidth: 0 }}>
             <Box sx={{ flex: 1, minWidth: 0 }}>

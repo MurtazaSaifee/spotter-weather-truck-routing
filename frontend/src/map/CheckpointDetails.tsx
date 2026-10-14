@@ -33,7 +33,10 @@ export function CheckpointDetails({
   maxHeight,
 }: CheckpointDetailsProps) {
   return (
-    <Box role="tooltip" sx={{ width, maxHeight, overflowY: 'auto', boxSizing: 'border-box', p: 1.25 }}>
+    <Box
+      role="tooltip"
+      sx={{ width, maxHeight, overflowY: 'auto', boxSizing: 'border-box', p: 1.25 }}
+    >
       <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
         {routeLabel}
       </Typography>
@@ -48,14 +51,8 @@ export function CheckpointDetails({
   );
 }
 
-const CONDITION_WORDS: Record<ConditionName, string> = {
-  wind: 'wind',
-  rain: 'rain',
-  snow: 'snow',
-};
-
-const words = (names: ConditionName[], joiner: string) =>
-  names.map((name) => CONDITION_WORDS[name]).join(joiner);
+/** The condition names are the words: `wind and snow`. */
+const words = (names: ConditionName[], joiner: string) => names.join(joiner);
 
 /** The level with its colour and name, then why: what drove it, what stacked, what gusts add. */
 function Risk({ risk }: { risk: CheckpointRisk }) {
@@ -91,13 +88,7 @@ function Risk({ risk }: { risk: CheckpointRisk }) {
 }
 
 /** The forecast at the ETA, or No data: a checkpoint without one is never shown as fine. */
-function Forecast({
-  weather,
-  risk,
-}: {
-  weather: CheckpointWeather | null;
-  risk: CheckpointRisk;
-}) {
+function Forecast({ weather, risk }: { weather: CheckpointWeather | null; risk: CheckpointRisk }) {
   if (!weather) return null;
   return (
     <Box sx={{ mt: 0.5 }}>

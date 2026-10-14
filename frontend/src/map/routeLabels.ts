@@ -1,9 +1,10 @@
 import type { PickingInfo } from '@deck.gl/core';
 import { TextLayer } from '@deck.gl/layers';
 import type { PlannedRoute } from '../api/plan';
+import { theme } from '../theme';
 import { formatAverageRisk, formatDuration, formatMilesExact } from '../trip/format';
 import type { LngLat } from './polyline';
-import { rgb } from './routeLayers';
+import { rgb } from './colour';
 
 /** A route's label on the map: where it sits and what it says. */
 export interface RouteLabel {
@@ -129,9 +130,7 @@ export function placeLabels(
 
   for (const { route } of ordered) {
     const screen = projected.get(route.id)!;
-    const others = routes
-      .filter(({ id }) => id !== route.id)
-      .map(({ id }) => projected.get(id)!);
+    const others = routes.filter(({ id }) => id !== route.id).map(({ id }) => projected.get(id)!);
     const [width, height] = route.size;
     const clearAt = Math.hypot(width, height) / 2 + LABEL_GAP_PX;
     const area = visibleArea(view, route.size);
@@ -227,7 +226,10 @@ function distanceToSegment([px, py]: Point, [ax, ay]: Point, [bx, by]: Point): n
   const dx = bx - ax;
   const dy = by - ay;
   const lengthSquared = dx * dx + dy * dy;
-  const t = lengthSquared === 0 ? 0 : Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / lengthSquared));
+  const t =
+    lengthSquared === 0
+      ? 0
+      : Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / lengthSquared));
   return Math.hypot(px - (ax + t * dx), py - (ay + t * dy));
 }
 
@@ -254,8 +256,14 @@ function sample(path: LngLat[], screen: Point[], project: LabelView['project']):
       const t = length === 0 ? 0 : (next - travelled) / length;
       const [from, to] = [line[i], line[i + 1]];
       samples.push({
-        point: [from.point[0] + (to.point[0] - from.point[0]) * t, from.point[1] + (to.point[1] - from.point[1]) * t],
-        lngLat: [from.lngLat[0] + (to.lngLat[0] - from.lngLat[0]) * t, from.lngLat[1] + (to.lngLat[1] - from.lngLat[1]) * t],
+        point: [
+          from.point[0] + (to.point[0] - from.point[0]) * t,
+          from.point[1] + (to.point[1] - from.point[1]) * t,
+        ],
+        lngLat: [
+          from.lngLat[0] + (to.lngLat[0] - from.lngLat[0]) * t,
+          from.lngLat[1] + (to.lngLat[1] - from.lngLat[1]) * t,
+        ],
         along: next / total,
       });
     }
@@ -264,14 +272,21 @@ function sample(path: LngLat[], screen: Point[], project: LabelView['project']):
   return samples;
 }
 
-const TEXT_COLOR = rgb('#1c2433');
+const { palette } = theme;
+const TEXT_COLOR = rgb(palette.text.primary);
+// The same colours as the route lines (see TripMap); a blocked route's is the error red.
 const BORDER_COLORS: Record<LabelTone, [number, number, number]> = {
-  selected: rgb('#1a4590'),
-  recommended: rgb('#112f68'),
-  blocked: rgb('#b3261e'),
-  plain: rgb('#6b7385'),
+  selected: rgb(palette.primary.main),
+  recommended: rgb(palette.primary.dark),
+  blocked: rgb(palette.error.main),
+  plain: rgb(palette.grey[500]),
 };
-const BORDER_WIDTHS: Record<LabelTone, number> = { selected: 2, recommended: 1.5, blocked: 1.5, plain: 1 };
+const BORDER_WIDTHS: Record<LabelTone, number> = {
+  selected: 2,
+  recommended: 1.5,
+  blocked: 1.5,
+  plain: 1,
+};
 
 /**
  * The labels as a deck.gl layer; pressing one selects its route, like pressing the line. Where

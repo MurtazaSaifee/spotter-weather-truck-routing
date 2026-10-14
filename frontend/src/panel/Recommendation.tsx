@@ -1,5 +1,4 @@
 import { Alert, Box, Paper, Stack, Typography } from '@mui/material';
-import { createSvgIcon } from '@mui/material/utils';
 import type { Deciding, Notice, PlannedRoute } from '../api/plan';
 import {
   formatAverageRisk,
@@ -9,12 +8,7 @@ import {
   formatMilesExact,
 } from '../trip/format';
 import { AVERAGE_RISK_TOLERANCE } from '../trip/ranking';
-
-// Material "check_circle", inlined like the icons in HealthStatus.
-const CheckCircleIcon = createSvgIcon(
-  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />,
-  'CheckCircle',
-);
+import { CheckCircleIcon } from './icons';
 
 interface RecommendationProps {
   route: PlannedRoute;
@@ -107,7 +101,9 @@ function explain(deciding: Deciding, winner: string, other: string): string {
       return `Fewer High miles: ${winner} has ${formatMilesExact(won ?? 0)} mi, ${other} has ${formatMilesExact(lost ?? 0)} mi.`;
     case 'average_risk': {
       const otherRisk =
-        lost === null ? `${other} has no forecast data to average` : `${other} is ${formatAverageRisk(lost)}`;
+        lost === null
+          ? `${other} has no forecast data to average`
+          : `${other} is ${formatAverageRisk(lost)}`;
       const lowest = formatAverageRisk(deciding.best_average_risk);
       return (
         `Lower average risk: ${winner} is ${formatAverageRisk(won)}, ${otherRisk}. ` +
