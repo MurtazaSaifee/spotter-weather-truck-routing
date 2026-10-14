@@ -1,5 +1,3 @@
-# syntax=docker/dockerfile:1
-
 FROM ghcr.io/astral-sh/uv:0.13.1 AS uv
 
 # Build stage: resolve the locked, production-only dependencies into a virtualenv.
@@ -11,8 +9,7 @@ ENV UV_COMPILE_BYTECODE=1 \
 WORKDIR /app
 COPY pyproject.toml uv.lock ./
 # The project is a virtual uv project (no build system), so only its dependencies are installed.
-RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --locked --no-dev --no-install-project
+RUN uv sync --locked --no-dev --no-install-project
 
 # Runtime stage: Python, the virtualenv and the application, with no build tooling.
 FROM python:3.13-slim

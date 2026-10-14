@@ -1,0 +1,13 @@
+# What `gcloud run deploy --source` uploads to Cloud Build. Never upload secrets or local state.
+.gcloudignore
+.git
+.gitignore
+.env
+.env.*
+!.env.example
+.venv
+__pycache__
+*.py[cod]
+.pytest_cache
+.ruff_cache
+.mypy_cache
