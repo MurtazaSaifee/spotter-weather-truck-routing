@@ -5,6 +5,7 @@ Points are ``(lat, lng)`` tuples in degrees. Nothing here does I/O or touches Dj
 
 import math
 from collections.abc import Sequence
+from itertools import pairwise
 
 Point = tuple[float, float]
 
@@ -118,3 +119,124 @@ def _farthest_from_chord(xy: Sequence[Point], first: int, last: int) -> tuple[in
         if distance > farthest_distance:
             farthest, farthest_distance = index, distance
     return farthest, farthest_distance
+
+
+def sample_along(points: Sequence[Point], step_m: float) -> list[Point]:
+    """Points every ``step_m`` metres along the line, the first being its start.
+
+    Positions between vertices are interpolated linearly in latitude and longitude, which is
+    exact enough over the few hundred metres between a route's vertices.
+    """
+    if not points:
+        return []
+    samples = [points[0]]
+    travelled = 0.0
+    next_at = step_m
+    for start, end in pairwise(points):
+        length = haversine_m(start, end)
+        while length > 0 and travelled + length >= next_at:
+            samples.append(_between(start, end, (next_at - travelled) / length))
+            next_at += step_m
+        travelled += length
+    return samples
+
+
+def point_along(points: Sequence[Point], distance_m: float) -> Point:
+    """The point ``distance_m`` metres along the line, or its end if it is shorter."""
+    travelled = 0.0
+    for start, end in pairwise(points):
+        length = haversine_m(start, end)
+        if length > 0 and travelled + length >= distance_m:
+            return _between(start, end, (distance_m - travelled) / length)
+        travelled += length
+    return points[-1]
+
+
+def _between(start: Point, end: Point, fraction: float) -> Point:
+    return (
+        start[0] + (end[0] - start[0]) * fraction,
+        start[1] + (end[1] - start[1]) * fraction,
+    )
+
+
+def bearing_deg(start: Point, end: Point) -> float:
+    """Initial great-circle bearing from ``start`` to ``end``, in degrees clockwise from north."""
+    lat_a, lat_b = math.radians(start[0]), math.radians(end[0])
+    d_lng = math.radians(end[1] - start[1])
+    y = math.sin(d_lng) * math.cos(lat_b)
+    x = math.cos(lat_a) * math.sin(lat_b) - math.sin(lat_a) * math.cos(lat_b) * math.cos(d_lng)
+    return math.degrees(math.atan2(y, x)) % 360
+
+
+def move(start: Point, bearing: float, distance_m: float) -> Point:
+    """The point reached from ``start`` after ``distance_m`` metres along a great circle."""
+    angle = distance_m / EARTH_RADIUS_M
+    heading = math.radians(bearing)
+    lat, lng = math.radians(start[0]), math.radians(start[1])
+    new_lat = math.asin(
+        math.sin(lat) * math.cos(angle) + math.cos(lat) * math.sin(angle) * math.cos(heading)
+    )
+    new_lng = lng + math.atan2(
+        math.sin(heading) * math.sin(angle) * math.cos(lat),
+        math.cos(angle) - math.sin(lat) * math.sin(new_lat),
+    )
+    return math.degrees(new_lat), math.degrees(new_lng)
+
+
+class RouteIndex:
+    """Answers "is this point within ``radius_m`` of the route?" without scanning every segment.
+
+    The route's segments are filed under the cells of a grid (cells are one radius tall) that
+    their bounding boxes touch, so a query only measures the few segments in the cells around
+    the point. A route of 10,000 vertices is indexed once and queried thousands of times.
+    """
+
+    def __init__(self, points: Sequence[Point], radius_m: float):
+        self._radius_m = radius_m
+        self._cell_lat = radius_m / METRES_PER_DEGREE
+        # Cells are at least one radius wide at the route's most poleward latitude.
+        widest = max((abs(lat) for lat, _ in points), default=0.0)
+        self._cell_lng = self._cell_lat / math.cos(math.radians(widest))
+        self._segments = list(pairwise(points)) or [(p, p) for p in points]
+        self._cells: dict[tuple[int, int], list[int]] = {}
+        for number, (a, b) in enumerate(self._segments):
+            rows = range(*self._span(min(a[0], b[0]), max(a[0], b[0]), self._cell_lat))
+            cols = range(*self._span(min(a[1], b[1]), max(a[1], b[1]), self._cell_lng))
+            for row in rows:
+                for col in cols:
+                    self._cells.setdefault((row, col), []).append(number)
+
+    @staticmethod
+    def _span(low: float, high: float, size: float) -> tuple[int, int]:
+        return math.floor(low / size), math.floor(high / size) + 1
+
+    def is_near(self, point: Point) -> bool:
+        lat, lng = point
+        lng_scale = math.cos(math.radians(lat))
+        row, col = math.floor(lat / self._cell_lat), math.floor(lng / self._cell_lng)
+        # A degree of longitude shrinks towards the poles, so the point may reach further
+        # (in cells) than the route's own widest cell suggests.
+        reach = math.ceil(self._radius_m / (METRES_PER_DEGREE * lng_scale * self._cell_lng))
+        checked: set[int] = set()
+        for r in range(row - 1, row + 2):
+            for c in range(col - reach, col + reach + 1):
+                for number in self._cells.get((r, c), ()):
+                    if number in checked:
+                        continue
+                    checked.add(number)
+                    a, b = self._segments[number]
+                    if _distance_to_segment_m(point, a, b, lng_scale) <= self._radius_m:
+                        return True
+        return False
+
+
+def _distance_to_segment_m(point: Point, a: Point, b: Point, lng_scale: float) -> float:
+    """Distance from ``point`` to segment ``a``-``b`` on a flat plane centred on the point."""
+    ax = (a[1] - point[1]) * lng_scale * METRES_PER_DEGREE
+    ay = (a[0] - point[0]) * METRES_PER_DEGREE
+    bx = (b[1] - point[1]) * lng_scale * METRES_PER_DEGREE
+    by = (b[0] - point[0]) * METRES_PER_DEGREE
+    dx, dy = bx - ax, by - ay
+    length_squared = dx * dx + dy * dy
+    t = 0.0 if length_squared == 0 else max(0.0, min(1.0, -(ax * dx + ay * dy) / length_squared))
+    return math.hypot(ax + t * dx, ay + t * dy)
