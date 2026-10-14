@@ -2,6 +2,7 @@ import { Stack } from '@mui/material';
 import type { ApiError } from '../api/client';
 import type { Plan, PlanRequest, SamplingInterval } from '../api/plan';
 import type { Place } from '../api/places';
+import type { RateLimitWait } from '../api/rateLimit';
 import { AppHeader } from './AppHeader';
 import { HealthStatus } from './HealthStatus';
 import { PlanResults } from './PlanResults';
@@ -15,6 +16,7 @@ interface PlannerPanelProps {
   onPlan: (request: PlanRequest) => void;
   isPlanning: boolean;
   planError: ApiError | null;
+  planRateLimitWait: RateLimitWait | null;
   plan: Plan | null;
   selectedRouteId: string | null;
   onSelectRoute: (id: string) => void;
@@ -29,6 +31,7 @@ export function PlannerPanel({
   onPlan,
   isPlanning,
   planError,
+  planRateLimitWait,
   plan,
   selectedRouteId,
   onSelectRoute,
@@ -48,6 +51,7 @@ export function PlannerPanel({
       <PlanResults
         isPlanning={isPlanning}
         error={planError}
+        rateLimitWait={planRateLimitWait}
         plan={plan}
         selectedRouteId={selectedRouteId}
         onSelectRoute={onSelectRoute}

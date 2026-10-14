@@ -1,6 +1,7 @@
 """The trip heatmap endpoint: its request's validation rules, its response's shape and the view."""
 
 from datetime import datetime
+from typing import ClassVar
 
 from drf_spectacular.utils import OpenApiResponse, extend_schema, extend_schema_field
 from rest_framework import serializers
@@ -10,6 +11,7 @@ from rest_framework.views import APIView
 
 from . import heatmap
 from .geo import Point, decode_polyline
+from .ratelimit import HeatmapRateLimit
 from .serializers import (
     NORTH_AMERICA_LAT,
     NORTH_AMERICA_LNG,
@@ -128,6 +130,8 @@ class HeatmapSerializer(serializers.Serializer):
 
 
 class HeatmapView(APIView):
+    throttle_classes: ClassVar = [HeatmapRateLimit]
+
     @extend_schema(
         summary="Weather heatmap over the routes on screen",
         description=(
@@ -144,7 +148,9 @@ class HeatmapView(APIView):
             429: OpenApiResponse(
                 ErrorSerializer,
                 description=(
-                    "`weather_rate_limited`: `details.retry_after_seconds` says how long to wait."
+                    "`weather_rate_limited` (the weather service is limiting requests) or "
+                    "`rate_limit_exceeded` (this visitor's hourly allowance is used up). "
+                    "`details.retry_after_seconds` says how long to wait."
                 ),
             ),
             503: OpenApiResponse(ErrorSerializer, description="`weather_unavailable`"),

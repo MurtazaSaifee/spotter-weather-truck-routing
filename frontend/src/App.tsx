@@ -78,6 +78,7 @@ export default function App() {
             onPlan={handlePlan}
             isPlanning={planTrip.isPending}
             planError={planError}
+            planRateLimitWait={planTrip.rateLimitWait}
             plan={plan}
             selectedRouteId={selectedRouteId}
             onSelectRoute={setSelectedRouteId}
@@ -97,6 +98,7 @@ export default function App() {
               plan ? (
                 <HeatmapControls
                   status={heatmapStatus}
+                  rateLimitWait={heatmap.rateLimitWait}
                   departure={plan.departure}
                   timeZone={plan.origin_time_zone}
                   onRetry={() => void heatmap.refetch()}
