@@ -26,7 +26,8 @@ import {
 import { DeckGLOverlay } from './DeckGLOverlay';
 import { HeatmapLayers } from './HeatmapLayers';
 import { createLayerStore } from './layerStore';
-import { insetStyle, type Insets } from './framing';
+import { useMapInsets } from '../layout/mapInsets';
+import { insetStyle } from './framing';
 import { MapFraming } from './MapFraming';
 import { CollapsedAttribution, MapStyles } from './MapStyles';
 import { PlacePins } from './PlacePins';
@@ -65,8 +66,6 @@ interface TripMapProps {
   selectedRouteId: string | null;
   recommendedRouteId: string | null;
   onSelectRoute: (id: string) => void;
-  /** Parts of the map the layout covers (a bottom sheet): framing, labels and popups keep clear. */
-  padding?: Insets;
 }
 
 // The gap between a dot and the popup that describes it.
@@ -94,8 +93,10 @@ export default function TripMap({
   selectedRouteId,
   recommendedRouteId,
   onSelectRoute,
-  padding,
 }: TripMapProps) {
+  // What the layout covers (a phone's sheet and forecast card): framing, labels and popups
+  // keep clear of it.
+  const padding = useMapInsets();
   const theme = useTheme();
   const mapRef = useRef<MapRef>(null);
   const [touch] = useState(prefersTouch);

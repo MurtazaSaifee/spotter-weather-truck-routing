@@ -83,8 +83,10 @@ export interface LabelCandidate {
 // Space kept between a label and the edge of the map, and between two labels.
 const EDGE_MARGIN_PX = 8;
 const LABEL_GAP_PX = 6;
-// A pin stands on each end of a route; a label there would hide it.
-const PIN_CLEARANCE_PX = 48;
+// A pin stands on each end of a route, about this wide and this tall above its point: a label
+// there would hide it.
+const PIN_HALF_WIDTH_PX = 18;
+const PIN_HEIGHT_PX = 48;
 const SAMPLE_STEP_PX = 8;
 const MAX_SAMPLES = 600;
 // A point of a route closer than this to the one before it adds nothing to the shape.
@@ -116,7 +118,9 @@ export function placeLabels(
   previous: Record<string, LngLat> = {},
 ): Record<string, LngLat> {
   const projected = new Map(routes.map(({ id, path }) => [id, simplify(path.map(view.project))]));
-  const placed: Rect[] = [];
+  const placed: Rect[] = [...projected.values()].flatMap((line) =>
+    line.length === 0 ? [] : [pinRect(line[0]), pinRect(line[line.length - 1])],
+  );
   const result: Record<string, LngLat> = {};
 
   const ordered = routes
@@ -156,11 +160,6 @@ export function placeLabels(
     }
     const samples = sample(route.path, screen, view.project);
     for (const { point, lngLat, along } of samples) {
-      if (
-        distance(point, screen[0]) < PIN_CLEARANCE_PX ||
-        distance(point, screen[screen.length - 1]) < PIN_CLEARANCE_PX
-      )
-        continue;
       // Among equally clear spots the middle of the route reads best, and is steadiest.
       consider(point, lngLat, (1 - Math.abs(along - 0.5) * 2) * 4);
     }
@@ -172,6 +171,13 @@ export function placeLabels(
   }
   return result;
 }
+
+const pinRect = ([x, y]: Point): Rect => ({
+  left: x - PIN_HALF_WIDTH_PX,
+  right: x + PIN_HALF_WIDTH_PX,
+  top: y - PIN_HEIGHT_PX,
+  bottom: y + LABEL_GAP_PX,
+});
 
 /** Where a label's centre may be: inside the map and its padding, with the label wholly in. */
 function visibleArea(view: LabelView, [width, height]: [number, number]): Rect {

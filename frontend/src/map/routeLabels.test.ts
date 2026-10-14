@@ -136,6 +136,27 @@ describe('placing labels', () => {
     expect(bottom).toBeLessThanOrEqual(200);
   });
 
+  it('keeps clear of the pins standing at the ends of the routes', () => {
+    // A pin is about 28 px wide and stands 42 px above its point; this label would cover them.
+    const short: LngLat[] = [
+      [12, 0],
+      [28, 0],
+    ];
+    const wide: [number, number] = [160, 34];
+    const placed = placeLabels([{ id: 'a', path: short, size: wide, priority: 0 }], view());
+
+    if (placed.a) {
+      const label = rectOf(placed.a, wide);
+      for (const [lng, lat] of short) {
+        const [x, y] = screen([lng, lat]);
+        const pin = { left: x - 14, right: x + 14, top: y - 42, bottom: y };
+        const covers =
+          label.left < pin.right && pin.left < label.right && label.top < pin.bottom && pin.top < label.bottom;
+        expect(covers).toBe(false);
+      }
+    }
+  });
+
   it('leaves out a route none of which is on screen', () => {
     const away: LngLat[] = [
       [100, 50],

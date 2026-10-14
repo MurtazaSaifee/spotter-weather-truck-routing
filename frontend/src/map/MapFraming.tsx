@@ -1,13 +1,15 @@
 import { useEffect, useRef } from 'react';
 import { useMap } from 'react-map-gl/maplibre';
 import type { Place } from '../api/places';
-import { boundsOfRoutes, fitPadding, type Bounds, type Insets } from './framing';
+import { boundsOfRoutes, CONTINENTAL_US, fitPadding, type Bounds, type Insets } from './framing';
 import type { RoutePath } from './routeLayers';
 
 // A place is only useful if it is on screen: zoom in on a lone one, or frame both ends.
 const SINGLE_PIN_MIN_ZOOM = 8;
 const BOTH_PINS_MAX_ZOOM = 9;
 const ROUTES_MAX_ZOOM = 12;
+// A whole country on a big screen needs no more than this: it is not a place to read.
+const COUNTRY_MAX_ZOOM = 6;
 interface MapFramingProps {
   origin: Place | null;
   destination: Place | null;
@@ -81,14 +83,19 @@ export function MapFraming({ origin, destination, routes, insets }: MapFramingPr
       refit.current(true);
       return;
     }
-    target.current = null;
     const only = origin ?? destination;
-    if (only) {
-      map.easeTo({
-        center: [only.lng, only.lat],
-        zoom: Math.max(map.getZoom(), SINGLE_PIN_MIN_ZOOM),
-      });
+    if (!only) {
+      // Nothing chosen yet: the whole country, clear of whatever covers the map.
+      target.current = { bounds: CONTINENTAL_US, maxZoom: COUNTRY_MAX_ZOOM };
+      following.current = true;
+      refit.current(false);
+      return;
     }
+    target.current = null;
+    map.easeTo({
+      center: [only.lng, only.lat],
+      zoom: Math.max(map.getZoom(), SINGLE_PIN_MIN_ZOOM),
+    });
   }, [map, origin, destination, hasRoutes]);
 
   // A different layout (a sheet resting at another height) frames the same data differently.

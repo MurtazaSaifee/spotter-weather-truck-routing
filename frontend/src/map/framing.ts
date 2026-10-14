@@ -14,6 +14,12 @@ export type Insets = Partial<Record<'top' | 'right' | 'bottom' | 'left', number>
 
 export type Bounds = [LngLat, LngLat];
 
+/** The lower 48 states: what the map shows before there is a trip. */
+export const CONTINENTAL_US: Bounds = [
+  [-125, 24.5],
+  [-66.9, 49.5],
+];
+
 /**
  * The padding to hand `fitBounds` for a map of `width` x `height` pixels with `insets` covered:
  * the covered parts, plus a share of what is left, and room above for a pin.
