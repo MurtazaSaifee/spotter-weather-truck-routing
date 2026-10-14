@@ -2,6 +2,7 @@ import { PathStyleExtension } from '@deck.gl/extensions';
 import { describe, expect, it } from 'vitest';
 import {
   createRouteLayers,
+  CASING_EXTRA_PX,
   OTHER_WIDTH_PX,
   RECOMMENDED_WIDTH_PX,
   rgb,
@@ -31,16 +32,21 @@ function layers(overrides: Partial<Parameters<typeof createRouteLayers>[0]> = {}
   });
 }
 
+const isCasing = (layer: ReturnType<typeof layers>[number]) => layer.id.endsWith('-casing');
+
 /** The drawing position of the layer holding a route (later is on top), and its settings. */
 function drawn(all: ReturnType<typeof layers>, id: string) {
-  const position = all.findIndex((layer) => (layer.props.data as RoutePath[]).some((r) => r.id === id));
+  const position = all.findIndex(
+    (layer) => !isCasing(layer) && (layer.props.data as RoutePath[]).some((r) => r.id === id),
+  );
   const layer = all[position];
   const route = paths.find((r) => r.id === id)!;
   const accessor = <T>(value: unknown) => (value as (r: RoutePath) => T)(route);
   return {
     position,
     width: accessor<number>(layer.props.getWidth),
-    color: Array.from(accessor<number[]>(layer.props.getColor)),
+    color: Array.from(accessor<number[]>(layer.props.getColor)).slice(0, 3),
+    alpha: Array.from(accessor<number[]>(layer.props.getColor))[3] ?? 255,
     dashed: (layer.props.extensions ?? []).some((e) => e instanceof PathStyleExtension),
   };
 }
@@ -92,7 +98,7 @@ describe('route layers', () => {
   it('draw every route exactly once', () => {
     const all = layers({ blockedRouteIds: new Set(['route-1']) });
 
-    const ids = all.flatMap((layer) => (layer.props.data as RoutePath[]).map((r) => r.id));
+    const ids = all.filter((layer) => !isCasing(layer)).flatMap((layer) => (layer.props.data as RoutePath[]).map((r) => r.id));
     expect(ids.sort()).toEqual(['route-1', 'route-2', 'route-3']);
   });
 
@@ -100,5 +106,34 @@ describe('route layers', () => {
     const all = layers({ recommendedRouteId: null, selectedRouteId: null });
 
     expect(paths.map((p) => drawn(all, p.id).width)).toEqual([OTHER_WIDTH_PX, OTHER_WIDTH_PX, OTHER_WIDTH_PX]);
+  });
+
+  it('sets the selected route apart with a white casing under it, above the other routes', () => {
+    const all = layers({ blockedRouteIds: new Set(['route-3']) });
+
+    const casing = all.find((layer) => layer.id === 'selected-route-dashed-casing')!;
+    const [route] = casing.props.data as RoutePath[];
+    const casingWidth = (casing.props.getWidth as unknown as (r: RoutePath) => number)(route);
+    expect(route.id).toBe('route-3');
+    expect(casingWidth).toBe(SELECTED_WIDTH_PX + CASING_EXTRA_PX);
+    expect(Array.from((casing.props.getColor as unknown as number[]).slice(0, 3))).toEqual([255, 255, 255]);
+    expect(all.indexOf(casing)).toBeLessThan(drawn(all, 'route-3').position);
+    expect(all.indexOf(casing)).toBeGreaterThan(drawn(all, 'route-2').position);
+    // A dashed route gets a dashed casing, so it still reads as dashed.
+    expect(casing.props.extensions?.length).toBe(1);
+  });
+
+  it('dims the routes that are not selected and keeps the selected one opaque', () => {
+    const all = layers();
+
+    expect(drawn(all, 'route-3').alpha).toBe(255);
+    expect(drawn(all, 'route-1').alpha).toBeLessThan(255);
+  });
+
+  it('has no casing when nothing is selected', () => {
+    const all = layers({ selectedRouteId: null });
+
+    expect(all.filter((layer) => isCasing(layer)).every((layer) => (layer.props.data as unknown[]).length === 0)).toBe(true);
+    expect(drawn(all, 'route-1').alpha).toBe(255);
   });
 });

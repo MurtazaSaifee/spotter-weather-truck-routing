@@ -3,6 +3,7 @@ import { lazy, type ReactNode, Suspense } from 'react';
 import type { Heatmap } from '../heatmap/payload';
 import type { PlannedRoute } from '../api/plan';
 import type { Place } from '../api/places';
+import type { Insets } from './framing';
 import { MapPlaceholder } from './MapPlaceholder';
 
 // MapLibre and deck.gl are heavy; keep them out of the entry chunk so the
@@ -19,6 +20,8 @@ interface MapViewProps {
   /** Drawn thicker and on top; null when no route can be recommended. */
   recommendedRouteId: string | null;
   onSelectRoute: (id: string) => void;
+  /** Parts of the map the layout covers, such as a phone's bottom sheet, in pixels. */
+  padding?: Insets;
   /** A strip under the map, such as the forecast slider. */
   controls?: ReactNode;
 }

@@ -69,18 +69,38 @@ describe('DeckGLOverlay', () => {
     expect(fakeMap.controls.size).toBe(0);
   });
 
-  it('draws the underlay, then the layers, then the top layers, and follows both stores', () => {
-    // The heatmap and the truck change outside React; neither may need the map to re-render.
+  it('draws the underlay, the layers, the labels, then the top layers, and follows the stores', () => {
+    // The heatmap, the labels and the truck change outside React; none may need the map to
+    // re-render.
     const underlay = createLayerStore();
+    const labels = createLayerStore();
     const topLayers = createLayerStore();
     underlay.set([layer('heatmap')]);
-    render(<DeckGLOverlay layers={[layer('routes')]} underlay={underlay} topLayers={topLayers} />);
-    expect(shown.at(-1)).toEqual([[layer('heatmap')], [layer('routes')], []]);
+    render(
+      <DeckGLOverlay
+        layers={[layer('routes')]}
+        underlay={underlay}
+        labelLayers={labels}
+        topLayers={topLayers}
+      />,
+    );
+    expect(shown.at(-1)).toEqual([[layer('heatmap')], [layer('routes')], [], []]);
 
+    act(() => labels.set([layer('labels')]));
     act(() => topLayers.set([layer('truck')]));
-    expect(shown.at(-1)).toEqual([[layer('heatmap')], [layer('routes')], [layer('truck')]]);
+    expect(shown.at(-1)).toEqual([
+      [layer('heatmap')],
+      [layer('routes')],
+      [layer('labels')],
+      [layer('truck')],
+    ]);
 
     act(() => underlay.set([layer('next heatmap')]));
-    expect(shown.at(-1)).toEqual([[layer('next heatmap')], [layer('routes')], [layer('truck')]]);
+    expect(shown.at(-1)).toEqual([
+      [layer('next heatmap')],
+      [layer('routes')],
+      [layer('labels')],
+      [layer('truck')],
+    ]);
   });
 });
