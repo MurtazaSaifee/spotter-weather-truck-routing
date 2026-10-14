@@ -76,5 +76,5 @@ class PlanView(APIView):
     def post(self, request: Request) -> Response:
         trip = PlanRequestSerializer(data=request.data)
         trip.is_valid(raise_exception=True)
-        plan = planning.plan_trip(trip.to_trip())
+        plan = planning.plan_trip(trip.to_trip(), trip.interval_miles_override)
         return Response(PlanSerializer(plan).data)
