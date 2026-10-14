@@ -17,7 +17,7 @@ export function TruckStatus({ route }: { route: PlannedRoute | null }) {
   if (!track) return null;
 
   return (
-    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0 }}>
       <Box
         aria-hidden
         sx={{
@@ -31,7 +31,7 @@ export function TruckStatus({ route }: { route: PlannedRoute | null }) {
           boxShadow: 1,
         }}
       />
-      <Typography variant="body2">
+      <Typography variant="body2" noWrap sx={{ fontVariantNumeric: 'tabular-nums' }}>
         {truckStateText(truckAt(track, hour * SECONDS_PER_HOUR))}
       </Typography>
     </Box>
