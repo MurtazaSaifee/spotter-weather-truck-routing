@@ -1,10 +1,11 @@
-from drf_spectacular.utils import extend_schema
+from drf_spectacular.utils import OpenApiResponse, extend_schema
 from rest_framework import serializers
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from . import places
+from . import places, planning
+from .serializers import ErrorSerializer, PlanRequestSerializer, PlanSerializer
 
 
 class HealthSerializer(serializers.Serializer):
@@ -55,3 +56,25 @@ class PlaceSuggestionsView(APIView):
         result = places.suggest(query.validated_data["q"])
         body = {"provider": result.provider, "suggestions": result.places}
         return Response(PlaceSuggestionsSerializer(body).data)
+
+
+class PlanView(APIView):
+    @extend_schema(
+        summary="Plan a truck trip",
+        description=(
+            "Up to three truck routes between two North American places, with travel times "
+            "that account for the truck's weight and the traffic expected at departure."
+        ),
+        request=PlanRequestSerializer,
+        responses={
+            200: PlanSerializer,
+            400: OpenApiResponse(ErrorSerializer, description="`validation_error`"),
+            422: OpenApiResponse(ErrorSerializer, description="`no_route_found`"),
+            503: OpenApiResponse(ErrorSerializer, description="`routing_unavailable`"),
+        },
+    )
+    def post(self, request: Request) -> Response:
+        trip = PlanRequestSerializer(data=request.data)
+        trip.is_valid(raise_exception=True)
+        plan = planning.plan_trip(trip.to_trip())
+        return Response(PlanSerializer(plan).data)

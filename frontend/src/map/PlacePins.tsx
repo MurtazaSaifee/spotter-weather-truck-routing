@@ -1,12 +1,6 @@
 import { useTheme } from '@mui/material/styles';
-import { useEffect } from 'react';
-import { Marker, useMap } from 'react-map-gl/maplibre';
+import { Marker } from 'react-map-gl/maplibre';
 import type { Place } from '../api/places';
-
-// A pin is only useful if it is on screen: zoom in on a lone place, or frame both ends.
-const SINGLE_PIN_MIN_ZOOM = 8;
-const BOTH_PINS_MAX_ZOOM = 9;
-const FIT_PADDING_PX = 80;
 
 interface PinProps {
   kind: 'Origin' | 'Destination';
@@ -57,28 +51,6 @@ interface PlacePinsProps {
 /** Pins for the trip's chosen origin and destination. Must sit inside a `Map`. */
 export function PlacePins({ origin, destination }: PlacePinsProps) {
   const theme = useTheme();
-  const { current: map } = useMap();
-
-  useEffect(() => {
-    if (!map) return;
-    if (origin && destination) {
-      map.fitBounds(
-        [
-          [Math.min(origin.lng, destination.lng), Math.min(origin.lat, destination.lat)],
-          [Math.max(origin.lng, destination.lng), Math.max(origin.lat, destination.lat)],
-        ],
-        { padding: FIT_PADDING_PX, maxZoom: BOTH_PINS_MAX_ZOOM },
-      );
-      return;
-    }
-    const only = origin ?? destination;
-    if (only) {
-      map.easeTo({
-        center: [only.lng, only.lat],
-        zoom: Math.max(map.getZoom(), SINGLE_PIN_MIN_ZOOM),
-      });
-    }
-  }, [map, origin, destination]);
 
   return (
     <>

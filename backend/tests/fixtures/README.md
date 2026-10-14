@@ -10,3 +10,5 @@ Scrub secrets before saving: replace the HERE key with `REDACTED` anywhere it co
 |---|---|---|
 | `places/here_autosuggest_chicago.json` | `GET autosuggest.search.hereapi.com/v1/autosuggest?q=Chicago&in=countryCode:USA,CAN,MEX&at=39.5,-98.5&limit=8` | 2026-10-14 |
 | `places/photon_chicago.json` | `GET photon.komoot.io/api/?q=Chicago&limit=8&bbox=-170,14,-50,72` (needs a `User-Agent` header) | 2026-10-14 |
+| `routing/here_chicago_dallas_truck.json` | `GET router.hereapi.com/v8/routes?transportMode=truck&origin=41.88425,-87.63245&destination=32.77657,-96.79699&departureTime=2026-10-15T08:00:00-05:00&alternatives=6&return=polyline,summary&spans=dynamicSpeedInfo,length,duration&vehicle[grossWeight]=34927` (7 routes, 684 to 1,690 spans each; about 1.4 MB, minified) | 2026-10-14 |
+| `routing/here_chicago_havana_truck.json` | Same request to Havana (`23.1136,-82.3666`): HTTP 200 with `routes: []` and a `noRouteFound` notice | 2026-10-14 |
