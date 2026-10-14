@@ -15,3 +15,16 @@ class BatchFailingCache(LocMemCache):
 
     def set_many(self, data, timeout=None, version=None):
         raise ConnectionError("cache unreachable")
+
+
+class DeadCache(LocMemCache):
+    """Every operation raises a connection error, as with Redis switched off.
+
+    Nothing the app does with the cache survives it: not the rate limits, the cached routes
+    or the cached forecasts.
+    """
+
+    def _unreachable(self, *args, **kwargs):
+        raise ConnectionError("cache unreachable")
+
+    get = set = add = incr = touch = delete = get_many = set_many = _unreachable

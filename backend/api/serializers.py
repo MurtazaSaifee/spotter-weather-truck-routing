@@ -36,6 +36,36 @@ class OffsetDateTimeField(serializers.DateTimeField):
         return value.isoformat()
 
 
+class LoadWeightField(serializers.IntegerField):
+    """The cargo's weight in whole pounds, from 1 to ``MAX_LOAD_WEIGHT_LB``."""
+
+    def __init__(self, **kwargs) -> None:
+        kwargs.setdefault("min_value", 1)
+        kwargs.setdefault("max_value", MAX_LOAD_WEIGHT_LB)
+        kwargs.setdefault(
+            "error_messages",
+            {
+                "min_value": "Load weight must be greater than 0 lb.",
+                "max_value": f"Load weight can be at most {MAX_LOAD_WEIGHT_LB:,} lb.",
+            },
+        )
+        kwargs.setdefault(
+            "help_text",
+            "Weight of the cargo in pounds. The empty truck's weight is added for routing.",
+        )
+        super().__init__(**kwargs)
+
+
+def check_departure_window(value: datetime) -> datetime:
+    """``value`` if it is no more than 15 minutes ago and no more than 48 hours ahead."""
+    now = timezone.now()
+    if value < now - DEPARTURE_GRACE:
+        raise serializers.ValidationError("Departure can't be more than 15 minutes ago.")
+    if value > now + DEPARTURE_HORIZON:
+        raise serializers.ValidationError("Departure can't be more than 48 hours ahead.")
+    return value
+
+
 class TripPlaceSerializer(serializers.Serializer):
     """One end of the trip: what place search returned, less the time zone.
 
@@ -65,15 +95,7 @@ class PlanRequestSerializer(serializers.Serializer):
             "to 48 hours ahead."
         )
     )
-    load_weight_lb = serializers.IntegerField(
-        min_value=1,
-        max_value=MAX_LOAD_WEIGHT_LB,
-        error_messages={
-            "min_value": "Load weight must be greater than 0 lb.",
-            "max_value": f"Load weight can be at most {MAX_LOAD_WEIGHT_LB:,} lb.",
-        },
-        help_text="Weight of the cargo in pounds. The empty truck's weight is added for routing.",
-    )
+    load_weight_lb = LoadWeightField()
 
     interval_miles = serializers.ChoiceField(
         choices=INTERVAL_CHOICES,
@@ -85,12 +107,7 @@ class PlanRequestSerializer(serializers.Serializer):
     )
 
     def validate_departure(self, value: datetime) -> datetime:
-        now = timezone.now()
-        if value < now - DEPARTURE_GRACE:
-            raise serializers.ValidationError("Departure can't be more than 15 minutes ago.")
-        if value > now + DEPARTURE_HORIZON:
-            raise serializers.ValidationError("Departure can't be more than 48 hours ahead.")
-        return value
+        return check_departure_window(value)
 
     def validate(self, attrs: dict) -> dict:
         if _coordinates(attrs["origin"]) == _coordinates(attrs["destination"]):

@@ -1,16 +1,20 @@
 import { Alert, CircularProgress, Stack, Typography } from '@mui/material';
 import type { ApiError } from '../api/client';
 import type { Plan, SamplingInterval } from '../api/plan';
+import { describeWait, type RateLimitWait } from '../api/rateLimit';
 import { RiskLegend } from '../risk/RiskLegend';
 import { routeLabels, routesByRank } from '../trip/ranking';
 import { IntervalToggle } from './IntervalToggle';
 import { PlanNotices } from './PlanNotices';
 import { AllBlockedWarning, Recommendation, WhyThisRoute } from './Recommendation';
 import { RouteCard } from './RouteCard';
+import { WakingUpNotice } from './WakingUpNotice';
 
 interface PlanResultsProps {
   isPlanning: boolean;
   error: ApiError | null;
+  /** Set while the plan request waits out a short rate limit before its automatic retry. */
+  rateLimitWait: RateLimitWait | null;
   plan: Plan | null;
   selectedRouteId: string | null;
   onSelectRoute: (id: string) => void;
@@ -24,27 +28,38 @@ interface PlanResultsProps {
 export function PlanResults({
   isPlanning,
   error,
+  rateLimitWait,
   plan,
   selectedRouteId,
   onSelectRoute,
   onIntervalChange,
 }: PlanResultsProps) {
+  // A rate limit that clears by itself: say so and count down to the automatic retry.
+  const waiting = rateLimitWait && (
+    <Alert severity="info" role="status">
+      {describeWait(rateLimitWait)}
+    </Alert>
+  );
   if (isPlanning && !plan) {
+    if (waiting) return waiting;
     return (
-      <Stack
-        role="status"
-        direction="row"
-        spacing={1.5}
-        sx={{ alignItems: 'center', color: 'text.secondary' }}
-      >
-        <CircularProgress size={18} thickness={5} aria-hidden="true" />
-        <Typography variant="body2" sx={{ fontWeight: 500 }}>
-          Finding routes…
-        </Typography>
+      <Stack spacing={1}>
+        <Stack
+          role="status"
+          direction="row"
+          spacing={1.5}
+          sx={{ alignItems: 'center', color: 'text.secondary' }}
+        >
+          <CircularProgress size={18} thickness={5} aria-hidden="true" />
+          <Typography variant="body2" sx={{ fontWeight: 500 }}>
+            Finding routes…
+          </Typography>
+        </Stack>
+        <WakingUpNotice />
       </Stack>
     );
   }
-  const alert = error && <Alert severity="error">{error.message}</Alert>;
+  const alert = waiting || (error && <Alert severity="error">{error.message}</Alert>);
   if (!plan) return alert || null;
 
   const labels = routeLabels(plan.routes);
