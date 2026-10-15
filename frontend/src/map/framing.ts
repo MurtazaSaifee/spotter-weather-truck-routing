@@ -27,6 +27,46 @@ export const WORLD_BOUNDS: Bounds = [
   [180, 75],
 ];
 
+const TILE_SIZE_PX = 512;
+
+/** The share of the world's height (0 at the north edge, 1 at the south) a latitude sits at. */
+const worldY = (lat: number) =>
+  (1 - Math.log(Math.tan(Math.PI / 4 + (lat * Math.PI) / 360)) / Math.PI) / 2;
+const latitudeAt = (y: number) => (Math.atan(Math.exp(Math.PI * (1 - 2 * y))) * 360) / Math.PI - 90;
+const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
+
+/** The map's size and its zoom range, in px and zoom levels. */
+export interface CameraLimits {
+  width: number;
+  height: number;
+  minZoom: number;
+  maxZoom: number;
+}
+
+/**
+ * Where the camera may go, as MapLibre's own limits have it, with one difference. MapLibre will
+ * not zoom out past the world being as tall as the map, which on a tall map (a phone's, which
+ * runs under the bottom sheet) leaves the world's width cropped to half. On a map taller than it
+ * is wide the floor follows the width instead, one level lower so a fit has room around the
+ * world. Wider maps keep MapLibre's floor. Returns the centre and zoom to use.
+ */
+export function constrainCamera(
+  center: { lng: number; lat: number },
+  zoom: number,
+  { width, height, minZoom, maxZoom }: CameraLimits,
+) {
+  const floor =
+    width < height ? Math.log2(width / TILE_SIZE_PX) - 1 : Math.log2(height / TILE_SIZE_PX);
+  const constrained = clamp(zoom, Math.max(minZoom, floor), maxZoom);
+  // A world taller than the map keeps its edges off the map's. A shorter one is left where the fit
+  // put it: MapLibre itself keeps the centre between the poles.
+  const half = height / 2 / (TILE_SIZE_PX * 2 ** constrained);
+  const y = worldY(center.lat);
+  const clampedY = half < 0.5 ? clamp(y, half, 1 - half) : y;
+  const lat = clampedY === y ? center.lat : latitudeAt(clampedY);
+  return { center: { lng: center.lng, lat }, zoom: constrained };
+}
+
 /** `insets` plus the column of map controls on the right: what framing and labels keep clear of. */
 export function reserveControls(insets: Insets = {}): Insets {
   return { ...insets, right: (insets.right ?? 0) + CONTROL_COLUMN_PX };

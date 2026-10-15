@@ -29,7 +29,7 @@ import { DeckGLOverlay } from './DeckGLOverlay';
 import { HeatmapLayers } from './HeatmapLayers';
 import { createLayerStore } from './layerStore';
 import { useMapInsets } from '../layout/mapInsets';
-import { insetStyle, WORLD_BOUNDS } from './framing';
+import { constrainCamera, insetStyle, WORLD_BOUNDS } from './framing';
 import { MapFraming } from './MapFraming';
 import { CollapsedAttribution, MapStyles } from './MapStyles';
 import { PlacePins } from './PlacePins';
@@ -137,6 +137,21 @@ export default function TripMap({
     shown && dots.includes(shown.dot) ? shown : null;
   const described = stillShown(hovered) ?? stillShown(pinned);
 
+  // MapLibre's own floor on zooming out would crop the world's width on a tall phone map; see
+  // `constrainCamera`. Asked only once the map exists: its first view is set before that.
+  function constrain(lngLat: maplibregl.LngLat, zoom: number) {
+    const map = mapRef.current;
+    if (!map) return { center: lngLat, zoom };
+    const { clientWidth: width, clientHeight: height } = map.getContainer();
+    const { center, zoom: constrained } = constrainCamera(lngLat, zoom, {
+      width,
+      height,
+      minZoom: map.getMinZoom(),
+      maxZoom: map.getMaxZoom(),
+    });
+    return { center: new maplibregl.LngLat(center.lng, center.lat), zoom: constrained };
+  }
+
   /** Works out where the popup for `dot` fits on the map as it is now. */
   function describe(dot: CheckpointDot): Described | null {
     const map = mapRef.current;
@@ -210,6 +225,7 @@ export default function TripMap({
       mapLib={maplibregl}
       mapStyle={MAP_STYLE}
       initialViewState={INITIAL_VIEW_STATE}
+      transformConstrain={constrain}
       style={{ width: '100%', height: '100%', ...insetStyle(padding) }}
       attributionControl={false}
       // Rotating is as in Google Maps: Ctrl-drag (MapLibre's own), Command-drag (see
