@@ -20,6 +20,8 @@ node_modules/
 dist/
 coverage/
 .vercel/
+# Written by the Vercel CLI when it links the project
+frontend/.gitignore
 
 # OS / editor
 .DS_Store
