@@ -80,6 +80,9 @@ export default function App() {
   }
 
   function handlePlan(request: PlanRequest) {
+    // The map loads deck.gl once there are routes to draw. Start that download with the request,
+    // not when the answer arrives, so the routes are not held back by it.
+    void import('./map/DeckMapLayers');
     setSubmitted(request);
     setPlan(null);
     forecastHour.set(0);

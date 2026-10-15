@@ -2,11 +2,11 @@ import { PathStyleExtension } from '@deck.gl/extensions';
 import { describe, expect, it } from 'vitest';
 import { theme } from '../theme';
 import { rgb } from './colour';
+import { RECOMMENDED_ROUTE_COLOR } from './routeStyle';
 import {
   createRouteLayers,
   CASING_EXTRA_PX,
   OTHER_WIDTH_PX,
-  RECOMMENDED_ROUTE_COLOR,
   RECOMMENDED_WIDTH_PX,
   ROLE_STYLES,
   routeRole,

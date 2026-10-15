@@ -12,7 +12,7 @@ import {
   type LabelView,
   type RouteLabel,
 } from './routeLabels';
-import { RECOMMENDED_ROUTE_COLOR } from './routeLayers';
+import { RECOMMENDED_ROUTE_COLOR } from './routeStyle';
 
 describe('route label text', () => {
   it('names the route, its time and that it is recommended, with the average risk', () => {

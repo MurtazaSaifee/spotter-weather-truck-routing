@@ -2,15 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { RISK_LEVELS } from '../risk/palette';
 import { chicagoToDallas, chicagoToDallasStormOnRouteOne } from '../test/fixtures/plan';
 import { TOUCH_TARGET } from '../theme';
+import { checkpointDots, nearestDot } from './checkpointDots';
 import { rgb } from './colour';
-import {
-  checkpointDots,
-  createCheckpointLayers,
-  dotRadiusPx,
-  nearestDot,
-  OTHER_DOT,
-  SELECTED_DOT,
-} from './checkpointLayers';
+import { createCheckpointLayers, dotRadiusPx, OTHER_DOT, SELECTED_DOT } from './checkpointLayers';
 
 describe('checkpoint dots', () => {
   it('are coloured by risk level with the palette the legend uses, on every route', () => {

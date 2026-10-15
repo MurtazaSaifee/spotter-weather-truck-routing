@@ -1,8 +1,7 @@
 import type { PickingInfo } from '@deck.gl/core';
-import { useTheme } from '@mui/material/styles';
 import * as maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import {
   AttributionControl,
   Map,
@@ -17,16 +16,8 @@ import type { Place } from '../api/places';
 import { TOUCH_TARGET } from '../theme';
 import { useTruckTrack } from '../truck/useTruckTrack';
 import { CheckpointDetails } from './CheckpointDetails';
-import {
-  checkpointDots,
-  createCheckpointLayers,
-  dotAt,
-  nearestDot,
-  type CheckpointDot,
-} from './checkpointLayers';
+import { checkpointDots, dotAt, nearestDot, type CheckpointDot } from './checkpointDots';
 import { attachCommandRotate } from './commandRotate';
-import { DeckGLOverlay } from './DeckGLOverlay';
-import { HeatmapLayers } from './HeatmapLayers';
 import { createLayerStore } from './layerStore';
 import { useMapInsets } from '../layout/mapInsets';
 import { constrainCamera, insetStyle, WORLD_BOUNDS } from './framing';
@@ -35,17 +26,12 @@ import { CollapsedAttribution, MapStyles } from './MapStyles';
 import { PlacePins } from './PlacePins';
 import { decodePolyline } from './polyline';
 import { placePopup, POPUP_HEIGHT_PX, POPUP_WIDTH_PX, type PopupAnchor } from './popupPlacement';
-import { LabelPlacement } from './LabelPlacement';
-import {
-  createRouteLayers,
-  RECOMMENDED_ROUTE_COLOR,
-  ROUTE_LAYER_IDS,
-  ROUTE_PICKING_RADIUS_PX,
-  TOUCH_PICKING_RADIUS_PX,
-  type RoutePath,
-} from './routeLayers';
+import type { RoutePath } from './routeLayers';
+import { ROUTE_LAYER_IDS } from './routeStyle';
 import { routeLabels } from '../trip/ranking';
-import { TruckMarker } from './TruckMarker';
+
+// deck.gl is loaded when there is a plan to draw, not with the map: see DeckMapLayers.
+const DeckMapLayers = lazy(() => import('./DeckMapLayers'));
 
 // The credit the map's own style does not carry. The style's TileJSON already credits OpenFreeMap,
 // OpenMapTiles and OpenStreetMap; the forecast is Open-Meteo's, which asks for credit under CC BY 4.0.
@@ -108,9 +94,12 @@ export default function TripMap({
   // What the layout covers (a phone's sheet and forecast card): framing, labels and popups
   // keep clear of it.
   const padding = useMapInsets();
-  const theme = useTheme();
   const mapRef = useRef<MapRef>(null);
   const [touch] = useState(prefersTouch);
+  // deck.gl is needed once there is a route to draw, and then stays: the overlay mounts once and
+  // is not torn down when a new trip clears the routes for a moment.
+  const [drawsDeck, setDrawsDeck] = useState(routes.length > 0);
+  if (!drawsDeck && routes.length > 0) setDrawsDeck(true);
   // The route labels change when the map stops moving, outside React's render, like the truck.
   const [labelLayers] = useState(createLayerStore);
   // The heatmap's layers change every animation frame while it fades; they live in a store the
@@ -205,20 +194,6 @@ export default function TripMap({
   );
   const names = useMemo(() => routeLabels(routes), [routes]);
 
-  const layers = [
-    ...createRouteLayers({
-      paths,
-      selectedRouteId,
-      recommendedRouteId,
-      blockedRouteIds,
-      onSelectRoute,
-      selectedColor: theme.palette.primary.main,
-      recommendedColor: RECOMMENDED_ROUTE_COLOR,
-      otherColor: theme.palette.grey[500],
-    }),
-    ...createCheckpointLayers({ dots, selectedRouteId }),
-  ];
-
   return (
     <Map
       ref={mapRef}
@@ -242,27 +217,29 @@ export default function TripMap({
       <NavigationControl position="top-right" />
       <PlacePins origin={origin} destination={destination} />
       <MapFraming origin={origin} destination={destination} routes={paths} insets={padding} />
-      <HeatmapLayers heatmap={heatmap} underlay={heatmapLayers} />
-      <LabelPlacement
-        routes={routes}
-        paths={paths}
-        names={names}
-        selectedRouteId={selectedRouteId}
-        recommendedRouteId={recommendedRouteId}
-        onSelectRoute={onSelectRoute}
-        insets={padding}
-        layers={labelLayers}
-      />
-      <TruckMarker track={truckTrack} layers={truckLayers} />
-      <DeckGLOverlay
-        layers={layers}
-        underlay={heatmapLayers}
-        labelLayers={labelLayers}
-        topLayers={truckLayers}
-        pickingRadius={touch ? TOUCH_PICKING_RADIUS_PX : ROUTE_PICKING_RADIUS_PX}
-        onHover={handleHover}
-        onClick={handleClick}
-      />
+      {drawsDeck && (
+        <Suspense fallback={null}>
+          <DeckMapLayers
+            routes={routes}
+            paths={paths}
+            dots={dots}
+            names={names}
+            blockedRouteIds={blockedRouteIds}
+            selectedRouteId={selectedRouteId}
+            recommendedRouteId={recommendedRouteId}
+            onSelectRoute={onSelectRoute}
+            heatmap={heatmap}
+            truckTrack={truckTrack}
+            insets={padding}
+            touch={touch}
+            heatmapLayers={heatmapLayers}
+            labelLayers={labelLayers}
+            truckLayers={truckLayers}
+            onHover={handleHover}
+            onClick={handleClick}
+          />
+        </Suspense>
+      )}
       {described && timeZone && (
         <Popup
           longitude={described.dot.position[0]}

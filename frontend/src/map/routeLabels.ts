@@ -5,7 +5,7 @@ import { theme } from '../theme';
 import { formatAverageRisk, formatDuration, formatMilesExact } from '../trip/format';
 import type { LngLat } from './polyline';
 import { rgb } from './colour';
-import { RECOMMENDED_ROUTE_COLOR } from './routeLayers';
+import { RECOMMENDED_ROUTE_COLOR } from './routeStyle';
 
 /** A route's label on the map: where it sits and what it says. */
 export interface RouteLabel {
