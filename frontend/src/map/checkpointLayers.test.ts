@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { RISK_LEVELS } from '../risk/palette';
-import { chicagoToDallas } from '../test/fixtures/plan';
+import { chicagoToDallas, chicagoToDallasStormOnRouteOne } from '../test/fixtures/plan';
 import { TOUCH_TARGET } from '../theme';
 import { rgb } from './colour';
 import {
@@ -32,6 +32,16 @@ describe('checkpoint dots', () => {
       expect(colourOf(25, routeId)).toEqual(palette('moderate'));
       expect(colourOf(50, routeId)).toEqual(palette('no_data'));
     }
+  });
+
+  it('are labelled like the route cards, by the rank of their route', () => {
+    const dots = checkpointDots(chicagoToDallasStormOnRouteOne.routes);
+    const labelOf = (routeId: string) => dots.find((dot) => dot.routeId === routeId)!.routeLabel;
+
+    // The storm ranks route 1 second, though the plan lists it first.
+    expect(labelOf('route-1')).toBe('Route 2');
+    expect(labelOf('route-2')).toBe('Route 1');
+    expect(labelOf('route-3')).toBe('Route 3');
   });
 
   it('use a different colour for every level', () => {

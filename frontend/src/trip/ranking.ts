@@ -7,9 +7,12 @@ import type { Plan, PlannedRoute } from '../api/plan';
  */
 export const AVERAGE_RISK_TOLERANCE = 0.25;
 
-/** `Route 1`, `Route 2`… by the route's place in the plan, which follows its id (fastest first). */
+/**
+ * `Route 1`, `Route 2`… by the route's rank, so the best route is Route 1 and the cards read in
+ * order. The plan lists routes by id (fastest first), which is not the order of the cards.
+ */
 export function routeLabels(routes: PlannedRoute[]): Record<string, string> {
-  return Object.fromEntries(routes.map((route, index) => [route.id, `Route ${index + 1}`]));
+  return Object.fromEntries(routes.map((route) => [route.id, `Route ${route.rank}`]));
 }
 
 /** The routes best first, as the server ranked them. */

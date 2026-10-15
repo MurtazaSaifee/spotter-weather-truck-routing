@@ -4,6 +4,7 @@ import type { Checkpoint, PlannedRoute } from '../api/plan';
 import type { Place } from '../api/places';
 import { useHeatmapLayer } from '../heatmap/layer';
 import { CheckpointDetails } from '../map/CheckpointDetails';
+import { routeLabels } from '../trip/ranking';
 
 interface TripMapStubProps {
   origin: Place | null;
@@ -36,9 +37,10 @@ export default function TripMapStub({
   onSelectRoute,
 }: TripMapStubProps) {
   const layer = useHeatmapLayer();
-  const [described, setDescribed] = useState<{ route: number; checkpoint: Checkpoint } | null>(
+  const [described, setDescribed] = useState<{ route: string; checkpoint: Checkpoint } | null>(
     null,
   );
+  const names = routeLabels(routes);
   return (
     <div role="region" aria-label="Map">
       {heatmap && (
@@ -48,11 +50,11 @@ export default function TripMapStub({
       )}
       {origin && <StubPin kind="Origin" place={origin} />}
       {destination && <StubPin kind="Destination" place={destination} />}
-      {routes.map((route, index) => (
+      {routes.map((route) => (
         <div key={route.id}>
           <button
             type="button"
-            aria-label={`Route ${index + 1} on map`}
+            aria-label={`${names[route.id]} on map`}
             aria-pressed={route.id === selectedRouteId}
             data-recommended={route.id === recommendedRouteId}
             data-blocked={route.blocked}
@@ -64,8 +66,8 @@ export default function TripMapStub({
             <button
               key={checkpoint.mile}
               type="button"
-              aria-label={`Route ${index + 1} checkpoint at mile ${checkpoint.mile}`}
-              onClick={() => setDescribed({ route: index + 1, checkpoint })}
+              aria-label={`${names[route.id]} checkpoint at mile ${checkpoint.mile}`}
+              onClick={() => setDescribed({ route: names[route.id], checkpoint })}
             />
           ))}
         </div>
@@ -73,7 +75,7 @@ export default function TripMapStub({
       {described && timeZone && (
         <CheckpointDetails
           checkpoint={described.checkpoint}
-          routeLabel={`Route ${described.route}`}
+          routeLabel={described.route}
           timeZone={timeZone}
         />
       )}

@@ -193,8 +193,9 @@ export const chicagoToDallas: Plan = {
 };
 
 /**
- * The same trip when a storm sits on route 1: it gets 50 Severe miles, so the slower route 2
- * is recommended and ranks first. Route 3 is still blocked.
+ * The same trip when a storm sits on route-1: it gets 50 Severe miles, so the slower route-2
+ * is recommended and ranks first. The plan still lists them by id, but the cards number routes
+ * by rank, so route-2 reads "Route 1" and route-1 reads "Route 2". route-3 is still blocked.
  */
 export const chicagoToDallasStormOnRouteOne: Plan = {
   ...chicagoToDallas,

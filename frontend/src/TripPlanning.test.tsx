@@ -386,7 +386,7 @@ describe('planning a trip', () => {
     answerPlansWith(() =>
       HttpResponse.json({
         ...chicagoToDallas,
-        routes: [routeTwo, routeThree].map((r, i) => ({ ...r, id: `route-${i + 1}` })),
+        routes: [routeTwo, routeThree].map((r, i) => ({ ...r, id: `route-${i + 1}`, rank: i + 1 })),
       }),
     );
     await user.click(planButton());

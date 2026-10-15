@@ -3,6 +3,7 @@ import { ScatterplotLayer } from '@deck.gl/layers';
 import type { Checkpoint, PlannedRoute } from '../api/plan';
 import type { LngLat } from './polyline';
 import { riskStyle } from '../risk/palette';
+import { routeLabels } from '../trip/ranking';
 import { rgb } from './colour';
 
 /** One checkpoint, ready to draw and to describe when the driver points at it. */
@@ -46,10 +47,11 @@ const OTHER_LAYER_ID = 'checkpoints';
 
 /** The dots of every route, labelled `Route 1`, `Route 2`… like the route cards. */
 export function checkpointDots(routes: PlannedRoute[]): CheckpointDot[] {
-  return routes.flatMap((route, index) =>
+  const labels = routeLabels(routes);
+  return routes.flatMap((route) =>
     route.checkpoints.map((checkpoint) => ({
       routeId: route.id,
-      routeLabel: `Route ${index + 1}`,
+      routeLabel: labels[route.id],
       checkpoint,
       position: [checkpoint.lng, checkpoint.lat] as LngLat,
     })),
