@@ -7,12 +7,12 @@ import { colourTable, stepFor, WEATHER_SCALES, type WeatherLayer } from './scale
 /** Pure pixel work for the heatmap, kept apart from the worker that runs it. */
 
 /** The longer side of a frame, in pixels. */
-export const TARGET_PX = 384;
+const TARGET_PX = 384;
 
 /** `[west, south, east, north]` in degrees. */
 export type Bounds = [number, number, number, number];
 
-export interface Raster {
+interface Raster {
   width: number;
   height: number;
   bounds: Bounds;

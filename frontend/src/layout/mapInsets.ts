@@ -11,7 +11,7 @@ export interface MapInsets {
   bottom: number;
 }
 
-export const NO_MAP_INSETS: MapInsets = { top: 0, bottom: 0 };
+const NO_MAP_INSETS: MapInsets = { top: 0, bottom: 0 };
 
 export const MapInsetsContext = createContext<MapInsets>(NO_MAP_INSETS);
 

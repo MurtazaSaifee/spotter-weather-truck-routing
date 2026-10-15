@@ -1,13 +1,6 @@
 import type { Plan, PlannedRoute } from '../api/plan';
 
 /**
- * Average risks closer than this to the lowest one count as tied, and travel time decides.
- * It mirrors the backend's `AVERAGE_RISK_TOLERANCE`, which does the ranking; it is only used to
- * say so in the explanation.
- */
-export const AVERAGE_RISK_TOLERANCE = 0.25;
-
-/**
  * `Route 1`, `Route 2`… by the route's rank, so the best route is Route 1 and the cards read in
  * order. The plan lists routes by id (fastest first), which is not the order of the cards.
  */

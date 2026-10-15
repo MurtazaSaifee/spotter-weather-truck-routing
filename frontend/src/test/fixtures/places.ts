@@ -15,7 +15,7 @@ export const dallas: Place = {
   time_zone: 'America/Chicago',
 };
 
-export const wrigleyField: Place = {
+const wrigleyField: Place = {
   label: 'Wrigley Field, 1060 W Addison St, Chicago, IL 60613, United States',
   lat: 41.94757,
   lng: -87.65631,

@@ -20,7 +20,7 @@ export interface CheckpointDot {
  * zoom where the whole trip fits, where it is small enough to leave the heatmap readable; the
  * ceiling stops it swallowing the road once the driver is zoomed in.
  */
-export interface DotSize {
+interface DotSize {
   meters: number;
   minPx: number;
   maxPx: number;

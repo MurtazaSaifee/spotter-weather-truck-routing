@@ -7,7 +7,7 @@ import type {
   RiskLevel,
 } from '../api/plan';
 import { riskStyle } from '../risk/palette';
-import { formatInZone, formatMilesExact } from '../trip/format';
+import { formatInZone, formatMilesExact, formatNumber } from '../trip/format';
 import { POPUP_WIDTH_PX } from './popupPlacement';
 
 interface CheckpointDetailsProps {
@@ -111,9 +111,4 @@ function Forecast({ weather, risk }: { weather: CheckpointWeather | null; risk: 
 /** ` · Moderate`: a condition's own level, beside its value. */
 function levelOf(level: RiskLevel | null): string {
   return level ? ` · ${riskStyle(level).label}` : '';
-}
-
-/** At most `digits` decimals, without a pointless `.0`: `9` and `0.034`. */
-function formatNumber(value: number, digits: number): string {
-  return value.toLocaleString('en-US', { maximumFractionDigits: digits });
 }

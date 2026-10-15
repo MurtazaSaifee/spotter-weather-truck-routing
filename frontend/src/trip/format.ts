@@ -1,9 +1,14 @@
 import dayjs from 'dayjs';
 import { zoneAbbreviation } from './departure';
 
+/** At most `digits` decimals, without a pointless `.0`: `9` and `0.034`. */
+export function formatNumber(value: number, digits: number): string {
+  return value.toLocaleString('en-US', { maximumFractionDigits: digits });
+}
+
 /** Miles to a tenth, without a pointless `.0`: `25` and `926.8`. */
 export function formatMilesExact(miles: number): string {
-  return miles.toLocaleString('en-US', { maximumFractionDigits: 1 });
+  return formatNumber(miles, 1);
 }
 
 /** An average risk score to two decimals: `0.45`, or `n/a` for a route with nothing assessed. */

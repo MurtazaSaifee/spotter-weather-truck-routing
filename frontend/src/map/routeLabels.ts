@@ -18,7 +18,7 @@ export interface RouteLabel {
 export type LabelTone = 'selected' | 'recommended' | 'blocked' | 'plain';
 
 /** `brief` keeps the name, time and status; `full` adds the average risk (or No Travel miles). */
-export type LabelDetail = 'brief' | 'full';
+type LabelDetail = 'brief' | 'full';
 
 interface LabelTextOptions {
   recommended: boolean;
@@ -74,7 +74,7 @@ export interface LabelView {
   padding?: Partial<Record<'top' | 'right' | 'bottom' | 'left', number>>;
 }
 
-export interface LabelCandidate {
+interface LabelCandidate {
   id: string;
   path: LngLat[];
   size: [number, number];

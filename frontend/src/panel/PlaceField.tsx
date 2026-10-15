@@ -10,7 +10,7 @@ import { type ReactNode, useState } from 'react';
 import { MIN_QUERY_LENGTH, type Place, usePlaceSuggestions } from '../api/places';
 import { useDebouncedValue } from '../hooks/useDebouncedValue';
 
-export const SUGGESTION_DEBOUNCE_MS = 300;
+const SUGGESTION_DEBOUNCE_MS = 300;
 
 const ATTRIBUTION = {
   here: 'Powered by HERE',

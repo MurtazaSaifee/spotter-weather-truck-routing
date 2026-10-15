@@ -64,9 +64,9 @@ const CASING_COLOR: [number, number, number] = [255, 255, 255];
  * What a route is on the map. A route is the selected one, the recommended one, both, a blocked
  * one or just another; the first that applies wins.
  */
-export type RouteRole = 'selectedRecommended' | 'selected' | 'recommended' | 'blocked' | 'other';
+type RouteRole = 'selectedRecommended' | 'selected' | 'recommended' | 'blocked' | 'other';
 
-export interface RouteSelection {
+interface RouteSelection {
   selectedRouteId: string | null;
   recommendedRouteId: string | null;
 }

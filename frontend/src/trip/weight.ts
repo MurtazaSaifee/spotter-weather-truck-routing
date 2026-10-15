@@ -1,5 +1,5 @@
 /** The heaviest cargo a truck is planned for. */
-export const MAX_LOAD_WEIGHT_LB = 50_000;
+const MAX_LOAD_WEIGHT_LB = 50_000;
 
 const MAX_DIGITS = 9;
 

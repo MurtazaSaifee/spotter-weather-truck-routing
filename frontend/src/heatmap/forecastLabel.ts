@@ -2,7 +2,7 @@ import dayjs from 'dayjs';
 import { zoneAbbreviation } from '../trip/departure';
 
 /** What the slider shows for an hour, in the two parts the strip styles differently. */
-export interface ForecastLabel {
+interface ForecastLabel {
   /** The clock time a driver reads in the origin's zone, e.g. `Thu 2:00 PM EDT`. */
   clock: string;
   /** How long after departure: `+14 h`, or `Departure` for hour 0. */

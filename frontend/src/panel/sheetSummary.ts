@@ -2,7 +2,7 @@ import type { Plan } from '../api/plan';
 import { formatDuration, formatInZone, formatMiles } from '../trip/format';
 import { routeLabels } from '../trip/ranking';
 
-export interface SheetSummary {
+interface SheetSummary {
   title: string;
   subtitle?: string;
 }

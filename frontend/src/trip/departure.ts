@@ -6,9 +6,9 @@ dayjs.extend(utc);
 dayjs.extend(timezone);
 
 /** A departure too long ago is refused, but a few minutes late is a slow submit, not a mistake. */
-export const DEPARTURE_GRACE_MINUTES = 15;
+const DEPARTURE_GRACE_MINUTES = 15;
 /** The forecast supports planning this far ahead and no further. */
-export const DEPARTURE_HORIZON_HOURS = 48;
+const DEPARTURE_HORIZON_HOURS = 48;
 
 /** The wall-clock time, without a zone, in the format the picker works in. */
 const CLOCK_FORMAT = 'YYYY-MM-DDTHH:mm';

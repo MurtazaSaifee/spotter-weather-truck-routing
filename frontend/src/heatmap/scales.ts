@@ -7,7 +7,7 @@ export type WeatherLayer = 'wind' | 'rain' | 'snow';
  * A fixed continuous colour scale. It never adapts to the data on screen, so a colour means
  * the same weather at every hour and on every trip.
  */
-export interface WeatherScale {
+interface WeatherScale {
   /** What the legend calls the layer. */
   title: string;
   unit: string;

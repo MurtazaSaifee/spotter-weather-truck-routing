@@ -17,7 +17,7 @@ const RATE_LIMIT_CODES = ['weather_rate_limited', 'rate_limit_exceeded'];
 
 /** A wait longer than this (an hourly limit with most of the hour to run) is not worth a
  * countdown: the message says so and the driver decides. */
-export const MAX_AUTOMATIC_RETRY_SECONDS = 120;
+const MAX_AUTOMATIC_RETRY_SECONDS = 120;
 
 export class ApiError extends Error {
   readonly code: string;

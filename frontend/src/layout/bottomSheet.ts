@@ -32,18 +32,14 @@ interface Metrics {
 }
 
 /** How far down, in px, the sheet sits at each snap (0 is fully open). */
-export function sheetOffsets({
-  sheetHeight,
-  rootHeight,
-  safeBottom,
-}: Metrics): Record<SheetSnap, number> {
+function sheetOffsets({ sheetHeight, rootHeight, safeBottom }: Metrics): Record<SheetSnap, number> {
   const collapsed = Math.max(0, sheetHeight - SHEET_HEADER_HEIGHT - safeBottom);
   const half = Math.min(collapsed, Math.max(0, sheetHeight - Math.round(rootHeight * HALF_SHARE)));
   return { collapsed, half, full: 0 };
 }
 
 /** The snap nearest to `offset`. */
-export function nearestSnap(offset: number, offsets: Record<SheetSnap, number>): SheetSnap {
+function nearestSnap(offset: number, offsets: Record<SheetSnap, number>): SheetSnap {
   return SNAPS.reduce((best, snap) =>
     Math.abs(offsets[snap] - offset) < Math.abs(offsets[best] - offset) ? snap : best,
   );
@@ -60,7 +56,7 @@ interface DragState {
 }
 
 /** The elements the sheet measures and moves; the caller attaches them. */
-export interface SheetElements {
+interface SheetElements {
   /** The screen area the sheet lives in. */
   root: RefObject<HTMLElement | null>;
   sheet: RefObject<HTMLElement | null>;
@@ -68,7 +64,7 @@ export interface SheetElements {
   safeProbe: RefObject<HTMLElement | null>;
 }
 
-export interface UseBottomSheet {
+interface UseBottomSheet {
   snap: SheetSnap;
   setSnap: (snap: SheetSnap) => void;
   /** Px the sheet sits down from fully open, for the current snap. */

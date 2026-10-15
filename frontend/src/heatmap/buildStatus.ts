@@ -6,7 +6,7 @@ import type { Heatmap } from './payload';
  * its pictures are built in a worker inside the map chunk; when that fails the controls, which
  * live outside the map, must say so and offer a retry.
  */
-export interface HeatmapBuild {
+interface HeatmapBuild {
   /** Counts the retries: a new number makes the map start a fresh worker. */
   attempt: number;
   /** The worker could not build the pictures of this heatmap. */

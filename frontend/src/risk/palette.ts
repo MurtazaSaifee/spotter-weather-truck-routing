@@ -5,7 +5,7 @@ import type { CheckpointRiskLevel } from '../api/plan';
  * and wording from here. A colour is never the only signal: every level has a text label too.
  * No data is grey, and kept apart from Low's green so a missing forecast never looks safe.
  */
-export interface RiskStyle {
+interface RiskStyle {
   code: CheckpointRiskLevel;
   label: string;
   /** `#rrggbb`. */

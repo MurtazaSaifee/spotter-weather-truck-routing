@@ -36,7 +36,7 @@ const latitudeAt = (y: number) => (Math.atan(Math.exp(Math.PI * (1 - 2 * y))) * 
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
 
 /** The map's size and its zoom range, in px and zoom levels. */
-export interface CameraLimits {
+interface CameraLimits {
   width: number;
   height: number;
   minZoom: number;
