@@ -49,8 +49,9 @@ HOURLY_VARIABLES = "wind_speed_10m,wind_gusts_10m,rain,showers,snowfall"
 WINDOW_DAYS = 8
 
 CACHE_SECONDS = 60 * 60
-# A Redis request carries at most 10 MB; 200 entries of under 1 KB are far inside that.
-CACHE_READ_CHUNK = 200
+# A Redis request carries at most 10 MB. An entry is at most about 1.5 KB before compression
+# (192 hours of four 16-bit series), so a read of 1,000 keys is one round trip far inside that.
+CACHE_READ_CHUNK = 1000
 CACHE_WRITE_CHUNK = 200
 # Bumped when what is cached under "weather:" changes shape. Each adapter versions its own keys.
 _CACHE_KEY_VERSION = "v1"
