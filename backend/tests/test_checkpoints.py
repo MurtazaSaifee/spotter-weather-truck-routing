@@ -5,7 +5,7 @@ or small straight routes built here, whose positions and times can be worked out
 """
 
 import math
-from datetime import datetime
+from datetime import UTC, datetime, timedelta
 
 import flexpolyline
 import httpx
@@ -269,6 +269,65 @@ def test_etas_are_in_the_origin_time_zone_and_end_at_the_arrival(client, here):
     for route in plan(client)["routes"]:
         assert route["checkpoints"][0]["eta"] == "2026-10-15T08:00:00-05:00"
         assert route["checkpoints"][-1]["eta"] == route["arrival"]
+
+
+def test_a_trip_across_the_1_november_dst_change_has_true_etas_and_reads_the_hour_of_each(
+    client, outbound_http, open_meteo
+):
+    """New York, 250 mi north, leaving 21:20 EDT on 31 October (01:20 GMT on 1 November).
+
+    The clocks go back at 06:00 GMT, so the last four checkpoints are on Eastern Standard Time.
+    The recorded forecast is re-stamped from 31 October 00:00 GMT, with wind equal to the hour
+    count (25 mph at 01:00 GMT) and rain equal to it in thousandths of an inch (0.025 in/hr).
+    """
+    hours = 192
+    stamps = [datetime(2026, 10, 31, tzinfo=UTC) + timedelta(hours=n) for n in range(hours)]
+    for location in open_meteo.recording:
+        hourly = location["hourly"]
+        hourly["time"] = [stamp.strftime("%Y-%m-%dT%H:%M") for stamp in stamps]
+        hourly["wind_speed_10m"] = [float(n) for n in range(hours)]
+        hourly["rain"] = [n / 1000 for n in range(hours)]
+        hourly["showers"] = [0.0] * hours
+    answer_with(outbound_http, straight_route((402_336, 36_000), longitude=-74.0))
+
+    with time_machine.travel("2026-10-30T12:00:00Z", tick=False):
+        response = client.post(
+            PLAN_URL,
+            trip(
+                origin={"label": "New York, NY", "lat": 40.0, "lng": -74.0},
+                destination={"label": "Albany, NY", "lat": 43.62, "lng": -74.0},
+                departure="2026-10-31T21:20:00-04:00",
+                load_weight_lb=30_000,
+                interval_miles=50,
+            ),
+            content_type="application/json",
+        )
+
+    assert response.status_code == 200
+    (route,) = response.json()["routes"]
+    # Six checkpoints, 50 mi and 2 h apart, each ETA on the true clock in New York.
+    assert [checkpoint["eta"] for checkpoint in route["checkpoints"]] == [
+        "2026-10-31T21:20:00-04:00",
+        "2026-10-31T23:20:00-04:00",
+        "2026-11-01T01:20:00-04:00",
+        "2026-11-01T02:20:00-05:00",
+        "2026-11-01T04:20:00-05:00",
+        "2026-11-01T06:20:00-05:00",
+    ]
+    assert route["checkpoints"][-1]["eta"] == route["arrival"]
+    # Sustained wind is the hour nearest the ETA (01:20 GMT is the 01:00 reading), and rain is
+    # the hour the truck is in (02:00 GMT reading, which covers 01:00 to 02:00).
+    assert [
+        (checkpoint["weather"]["wind_mph"], checkpoint["weather"]["rain_in_hr"])
+        for checkpoint in route["checkpoints"]
+    ] == [
+        (25.0, 0.026),
+        (27.0, 0.028),
+        (29.0, 0.030),
+        (31.0, 0.032),
+        (33.0, 0.034),
+        (35.0, 0.036),
+    ]
 
 
 def test_a_slow_span_delays_every_later_checkpoint(client, outbound_http, load_fixture):

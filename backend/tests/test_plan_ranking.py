@@ -10,6 +10,7 @@ import httpx
 import pytest
 import time_machine
 
+from api.risk import MILES_DECIMALS
 from tests.test_checkpoints import NOW, answer_with, straight_route
 from tests.test_weather import HUNDRED_MILES_M, post_plan
 
@@ -196,3 +197,54 @@ def test_a_single_route_is_recommended_without_a_comparison(client, outbound_htt
     (only,) = body["routes"]
     assert body["recommended_route_id"] == only["id"]
     assert (only["rank"], only["deciding"]) == (1, None)
+
+
+# --- Miles add up in every plan ----------------------------------------------------------------
+
+
+def _storm_on_fast(open_meteo):
+    weather_along(open_meteo, FAST_LNG, "wind_speed_10m", 50.0)
+
+
+def _mixed_on_both(open_meteo):
+    weather_along(open_meteo, FAST_LNG, "wind_speed_10m", 30.0, hours={MIDDLE_HOUR})
+    weather_along(open_meteo, FAST_LNG, "rain", 0.3, hours={MIDDLE_HOUR})
+    weather_along(open_meteo, SLOW_LNG, "snowfall", 2.5)
+
+
+def _no_data_on_fast(open_meteo):
+    weather_along(open_meteo, FAST_LNG, "wind_speed_10m", None)
+
+
+def _no_travel_on_fast(open_meteo):
+    weather_along(open_meteo, FAST_LNG, "wind_speed_10m", 60.0)
+
+
+def _no_travel_on_both(open_meteo):
+    weather_along(open_meteo, FAST_LNG, "wind_speed_10m", 60.0)
+    weather_along(open_meteo, SLOW_LNG, "wind_speed_10m", 60.0)
+
+
+@pytest.mark.parametrize(
+    "scenario",
+    [
+        pytest.param(lambda open_meteo: None, id="fair"),
+        pytest.param(_storm_on_fast, id="storm-on-fast"),
+        pytest.param(_mixed_on_both, id="mixed-levels"),
+        pytest.param(_no_data_on_fast, id="no-data-on-fast"),
+        pytest.param(_no_travel_on_fast, id="no-travel-on-fast"),
+        pytest.param(_no_travel_on_both, id="all-blocked"),
+    ],
+)
+def test_every_route_risk_miles_add_up_to_its_distance_within_the_rounding(
+    client, open_meteo, scenario
+):
+    scenario(open_meteo)
+
+    body = plan(client)
+
+    for route_body in body["routes"]:
+        risk_miles = route_body["risk_miles"]
+        # Six figures, each rounded to a tenth of a mile, and a distance rounded to a hundredth.
+        slack = len(risk_miles) * 0.5 * 10**-MILES_DECIMALS + 0.005
+        assert sum(risk_miles.values()) == pytest.approx(route_body["distance_miles"], abs=slack)

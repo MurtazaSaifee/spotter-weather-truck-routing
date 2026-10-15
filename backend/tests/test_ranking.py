@@ -120,6 +120,21 @@ def test_average_risk_beyond_the_tolerance_decides():
     assert (decider.recommended_value, decider.alternative_value) == (1.00, 1.26)
 
 
+@pytest.mark.parametrize(
+    ("gap", "recommended"),
+    [
+        (AVERAGE_RISK_TOLERANCE - 0.0001, "quick"),  # inside the band: time decides
+        (AVERAGE_RISK_TOLERANCE, "quick"),  # on the edge: still inside
+        (AVERAGE_RISK_TOLERANCE + 0.0001, "calm"),  # just outside: average risk decides
+    ],
+)
+def test_the_average_risk_tie_band_edge(gap, recommended):
+    calm = route("calm", average=1.00, hours=14)
+    quick = route("quick", average=1.00 + gap, hours=10)
+
+    assert rank_routes([calm, quick]).recommended_id == recommended
+
+
 def test_shortest_travel_time_wins_when_everything_else_ties():
     slow = route("slow", hours=12)
     quick = route("quick", hours=11.5)
@@ -313,6 +328,30 @@ def test_assessing_a_route_sums_covered_miles_by_level_and_counts_unassessed_mil
     assert assessment.moderate_miles == 0.0
     assert assessment.unassessed_miles == 2.5
     assert assessment.blocked
+
+
+def test_every_covered_mile_lands_at_exactly_one_level_or_is_unassessed():
+    checkpoints = [
+        checkpoint(4.5),  # Low
+        checkpoint(6.25, wind_mph=30.0),  # Moderate
+        checkpoint(7.0, rain_in_hr=0.3),  # High
+        checkpoint(8.5, wind_mph=50.0),  # Severe
+        checkpoint(9.75, wind_mph=60.0),  # No Travel
+        checkpoint(3.0, **NO_DATA),  # unassessed
+    ]
+
+    assessment = assess_route("r", travel_time_s=HOUR, checkpoints=checkpoints)
+
+    covered = sum(miles for miles, _ in checkpoints)
+    accounted = (
+        assessment.low_miles
+        + assessment.moderate_miles
+        + assessment.high_miles
+        + assessment.severe_miles
+        + assessment.no_travel_miles
+        + assessment.unassessed_miles
+    )
+    assert accounted == pytest.approx(covered)
 
 
 def test_average_risk_is_the_covered_miles_weighted_mean_of_the_assessed_scores():

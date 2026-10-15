@@ -159,6 +159,28 @@ def test_a_checkpoint_without_a_forecast_is_no_data_and_not_low(client, outbound
     assert route["checkpoints"][2]["weather"] is None
 
 
+def test_checkpoints_past_the_forecast_window_are_unassessed_and_never_low(
+    client, outbound_http, open_meteo
+):
+    # The forecast covers today and seven days more, so a ten-day route runs past it: its last
+    # two checkpoints (mile 75 and mile 100) have no forecast and nothing can make them Low.
+    forecast(open_meteo, wind=5.0)
+    hundred_mile_route(outbound_http, duration_s=10 * 24 * 3_600)
+
+    response = post_plan(client)
+
+    assert response.status_code == 200
+    checkpoints = risks(response)
+    assert [risk["level"] for risk in checkpoints[:3]] == ["low", "low", "low"]
+    assert [risk["level"] for risk in checkpoints[3:]] == ["no_data", "no_data"]
+    (route,) = response.json()["routes"]
+    # Each checkpoint covers half the gap to each neighbour: miles 0 to 50 are Low (12.5, 25 and
+    # 25 mi), and miles 75 to 100 are unassessed (25 mi for mile 75, 12.5 mi for mile 100).
+    assert route["risk_miles"]["low"] == pytest.approx(62.5, abs=0.1)
+    assert route["risk_miles"]["unassessed"] == pytest.approx(37.5, abs=0.1)
+    assert route["average_risk"] == 0.0
+
+
 def test_a_known_no_travel_blocks_the_route_even_with_other_values_missing(
     client, outbound_http, open_meteo
 ):

@@ -255,7 +255,6 @@ def _plan_route(
     points = route.points
     profile = RouteProfile(points, route.spans)
     kept = simplify(points, GEOMETRY_TOLERANCE_M)
-    departure = trip.departure_minute.astimezone(time_zone)
     arrival = trip.departure_minute + timedelta(seconds=route.duration_s)
     return PlannedRoute(
         id=route.id,
@@ -269,7 +268,11 @@ def _plan_route(
                 mile=checkpoint.distance_m / METRES_PER_MILE,
                 lat=checkpoint.point[0],
                 lng=checkpoint.point[1],
-                eta=departure + timedelta(seconds=round(checkpoint.elapsed_s)),
+                # Added in UTC, then converted: adding to a zone-aware time counts wall-clock
+                # time, which is an hour out on the far side of a clock change.
+                eta=(
+                    trip.departure_minute + timedelta(seconds=round(checkpoint.elapsed_s))
+                ).astimezone(time_zone),
                 covered_miles=checkpoint.covered_m / METRES_PER_MILE,
             )
             for checkpoint in profile.place_checkpoints(interval_miles * METRES_PER_MILE)

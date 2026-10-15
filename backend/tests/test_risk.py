@@ -45,6 +45,7 @@ WIND_EDGES = [
 RAIN_EDGES = [
     (0.0, LOW),
     (0.099, LOW),
+    (0.0999, LOW),
     (0.10, MODERATE),
     (0.249, MODERATE),
     (0.25, HIGH),
@@ -54,12 +55,14 @@ RAIN_EDGES = [
     # The brief writes "> 1.00"; on the edge the higher band wins, so exactly 1.00 is No Travel.
     (1.00, NO_TRAVEL),
     (1.001, NO_TRAVEL),
+    (1.01, NO_TRAVEL),
     (3.0, NO_TRAVEL),
 ]
 
 SNOW_EDGES = [
     (0.0, LOW),
     (0.4, LOW),
+    (0.49, LOW),
     (0.5, MODERATE),
     (0.9, MODERATE),
     (1.0, HIGH),
@@ -68,6 +71,7 @@ SNOW_EDGES = [
     (2.9, SEVERE),
     # "> 3.0" in the brief; exactly 3.0 is No Travel by the higher-band rule.
     (3.0, NO_TRAVEL),
+    (3.01, NO_TRAVEL),
     (3.1, NO_TRAVEL),
     (6.0, NO_TRAVEL),
 ]
@@ -249,6 +253,9 @@ GUST_WARNING = [
     (30.0, 40.0, LIGHT, HIGH),  # above the Moderate sustained level
     (20.0, 34.9, LIGHT, None),  # a breezy day: gusts only Moderate
     (20.0, 29.0, LIGHT, None),
+    (25.0, 34.9, LIGHT, None),  # Moderate sustained: gusts only Moderate, nothing above it
+    (34.0, 35.0, LIGHT, HIGH),  # Moderate sustained, gusts reach High: warns
+    (35.0, 35.0, LIGHT, None),  # High sustained, gusts equally High: nothing above it
     (5.0, 10.0, LIGHT, None),
     (40.0, 42.0, LIGHT, None),  # High gusts, but sustained is already High: nothing above it
     (40.0, 44.9, LIGHT, None),

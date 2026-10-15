@@ -596,6 +596,17 @@ def test_the_here_key_never_reaches_the_logs(client, outbound_http, caplog):
 # --- Caching --------------------------------------------------------------------------
 
 
+def test_a_plan_succeeds_with_the_cache_down(client, here, outbound_http, settings):
+    settings.CACHES = {"default": {"BACKEND": "tests.failing_cache.DeadCache"}}
+
+    response = post_plan(client, trip())
+
+    assert response.status_code == 200
+    body = response.json()
+    assert len(body["routes"]) == 3
+    assert body["recommended_route_id"] is not None
+
+
 def test_a_repeated_plan_succeeds_with_here_unreachable(client, here, outbound_http):
     first = post_plan(client, trip()).json()
     outbound_http.get(HERE_ROUTES_URL).mock(side_effect=httpx.ConnectError("down"))
