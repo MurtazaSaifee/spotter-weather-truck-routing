@@ -56,6 +56,13 @@ export function DeckGLOverlay({
 
   overlay.setProps({ ...props, layers: stack(underlay, props.layers, labels, topLayers) });
 
+  // In interleaved mode deck.gl draws inside MapLibre's own frame, and setProps does not ask
+  // for one, so a new selection would only show after the next pan or zoom. Repainting does not
+  // re-render React or call setProps again, so this cannot loop.
+  useEffect(() => {
+    mapRef?.getMap().triggerRepaint();
+  });
+
   const latest = useRef(props.layers);
   useEffect(() => {
     latest.current = props.layers;
@@ -63,11 +70,12 @@ export function DeckGLOverlay({
   useEffect(() => {
     const refresh = () => {
       overlay.setProps({ layers: stack(underlay, latest.current, labels, topLayers) });
+      mapRef?.getMap().triggerRepaint();
     };
     const unsubscribes = [underlay, labels, topLayers].flatMap((store) =>
       store ? [store.subscribe(refresh)] : [],
     );
     return () => unsubscribes.forEach((unsubscribe) => unsubscribe());
-  }, [underlay, labels, topLayers, overlay]);
+  }, [underlay, labels, topLayers, overlay, mapRef]);
   return null;
 }

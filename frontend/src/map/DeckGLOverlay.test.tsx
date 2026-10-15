@@ -10,6 +10,7 @@ import { createLayerStore } from './layerStore';
 const added: unknown[] = [];
 const shown: unknown[] = [];
 const fakeMap = {
+  triggerRepaint: vi.fn(),
   controls: new Set<unknown>(),
   hasControl: (control: unknown) => fakeMap.controls.has(control),
   addControl(control: unknown) {
@@ -35,6 +36,7 @@ afterEach(() => {
   added.length = 0;
   shown.length = 0;
   fakeMap.controls.clear();
+  fakeMap.triggerRepaint.mockClear();
 });
 
 // Stand-ins for deck.gl layers: only their identity matters here.
@@ -102,5 +104,19 @@ describe('DeckGLOverlay', () => {
       [layer('labels')],
       [layer('truck')],
     ]);
+  });
+
+  it('repaints the map when the layers or a store change, as setProps alone does not', () => {
+    // Interleaved deck.gl draws inside MapLibre's frame, so without a repaint the map keeps
+    // showing the previous route selection until the next pan or zoom.
+    const labels = createLayerStore();
+    const { rerender } = render(<DeckGLOverlay layers={[layer('route a')]} labelLayers={labels} />);
+    fakeMap.triggerRepaint.mockClear();
+
+    rerender(<DeckGLOverlay layers={[layer('route b')]} labelLayers={labels} />);
+    expect(fakeMap.triggerRepaint).toHaveBeenCalledTimes(1);
+
+    act(() => labels.set([layer('labels')]));
+    expect(fakeMap.triggerRepaint).toHaveBeenCalledTimes(2);
   });
 });
