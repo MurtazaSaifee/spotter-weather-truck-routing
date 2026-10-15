@@ -6,9 +6,9 @@ respx. An edge case is a hand-edited copy made inside the test, never a second f
 
 Scrub secrets before saving: replace the HERE key with `REDACTED` anywhere it could appear.
 
-The two places files were recorded while place search was limited to North America. The app no
-longer sends the `in` or `bbox` parameter, so their request column is what was recorded, not
-what the app sends today.
+The two places rows below are historical recordings, made while place search was still limited to
+North America. The app no longer sends the `in` or `bbox` parameter, so their request column is what
+was recorded, not what the app sends today.
 
 | File | Request | Recorded |
 |---|---|---|
