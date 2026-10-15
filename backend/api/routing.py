@@ -300,19 +300,51 @@ def _request_routes(trip: TripRequest, via: Point | None = None) -> list[Route]:
 def _parse_route(item: dict[str, Any]) -> Route:
     """Normalise one HERE route.
 
-    A route has one section unless it has stops; the trip has none (detour via-points are
-    pass-through), so anything else is an answer we don't understand.
+    HERE splits a route into sections where it takes a ferry or a car shuttle train. The
+    sections are joined into one route: each starts where the one before ends, and each
+    section's spans are re-indexed onto the joined geometry. A route with no points to draw
+    is an answer we don't understand.
     """
-    (section,) = item["sections"]
+    sections = item["sections"]
+    if len(sections) == 1:
+        (section,) = sections
+        return Route(
+            id=item["id"],
+            distance_m=round(section["summary"]["length"]),
+            duration_s=round(section["summary"]["duration"]),
+            spans=tuple(
+                Span(span["offset"], round(span["length"]), round(span["duration"]))
+                for span in section["spans"]
+            ),
+            polyline=section["polyline"],
+        )
+    points: list[Point] = []
+    spans: list[Span] = []
+    length_m = duration_s = 0.0
+    for section in sections:
+        decoded = [(lat, lng) for lat, lng in flexpolyline.decode(section["polyline"])]
+        # A section starts on the point the one before it ended on; that point is kept once.
+        shared = bool(points) and bool(decoded) and decoded[0] == points[-1]
+        base = len(points) - 1 if shared else len(points)
+        points.extend(decoded[1:] if shared else decoded)
+        summary = section["summary"]
+        if "spans" in section:
+            spans.extend(
+                Span(base + span["offset"], round(span["length"]), round(span["duration"]))
+                for span in section["spans"]
+            )
+        else:
+            spans.append(Span(base, round(summary["length"]), round(summary["duration"])))
+        length_m += summary["length"]
+        duration_s += summary["duration"]
+    if len(points) < 2:
+        raise ValueError("a route needs at least two points")
     return Route(
         id=item["id"],
-        distance_m=round(section["summary"]["length"]),
-        duration_s=round(section["summary"]["duration"]),
-        spans=tuple(
-            Span(span["offset"], round(span["length"]), round(span["duration"]))
-            for span in section["spans"]
-        ),
-        polyline=section["polyline"],
+        distance_m=round(length_m),
+        duration_s=round(duration_s),
+        spans=tuple(spans),
+        polyline=flexpolyline.encode(points),
     )
 
 
