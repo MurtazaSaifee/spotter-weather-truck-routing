@@ -60,11 +60,12 @@ interface PlaceFieldProps {
 }
 
 /**
- * A text field that suggests North American places as the driver types (after
- * a pause, from three characters) and reports the one they pick.
+ * A text field that suggests places as the driver types (after a pause, from three
+ * characters) and reports the one they pick. Which places can come back is up to the backend.
  */
 export function PlaceField({ label, value, onChange, error }: PlaceFieldProps) {
   const [inputValue, setInputValue] = useState('');
+  const [open, setOpen] = useState(false);
   const query = inputValue.trim();
   const debouncedQuery = useDebouncedValue(query, SUGGESTION_DEBOUNCE_MS);
 
@@ -82,12 +83,10 @@ export function PlaceField({ label, value, onChange, error }: PlaceFieldProps) {
   const options = value && !listed.some((p) => isSamePlace(p, value)) ? [value, ...listed] : listed;
 
   const isLoading = isSearching && (query !== debouncedQuery || suggestionsQuery.isFetching);
-  let noOptionsText = 'No places found';
-  if (query.length < MIN_QUERY_LENGTH) {
-    noOptionsText = `Type at least ${MIN_QUERY_LENGTH} characters`;
-  } else if (suggestionsQuery.error) {
-    noOptionsText = suggestionsQuery.error.message;
-  }
+  const noOptionsText = suggestionsQuery.error?.message ?? 'No places found';
+  // The list opens once there is something to show: suggestions, a search under way or its
+  // outcome. Before that, nothing drops down.
+  const hasContent = listed.length > 0 || query.length >= MIN_QUERY_LENGTH;
 
   const attribution =
     isSearching && suggestions.length > 0 && suggestionsQuery.data
@@ -100,6 +99,9 @@ export function PlaceField({ label, value, onChange, error }: PlaceFieldProps) {
   return (
     <Autocomplete
       options={options}
+      open={open && hasContent}
+      onOpen={() => setOpen(true)}
+      onClose={() => setOpen(false)}
       // The server has already matched the text; filtering again would hide good suggestions.
       filterOptions={() => listed}
       value={value}

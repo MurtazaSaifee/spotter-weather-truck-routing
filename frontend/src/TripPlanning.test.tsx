@@ -160,7 +160,7 @@ describe('departure', () => {
     renderApp();
 
     expect(departureText()).toBe('10 14 2026 11 00 AM');
-    expect(screen.getByText("PDT · your browser's time zone")).toBeInTheDocument();
+    expect(screen.queryByText('PDT')).not.toBeInTheDocument();
   });
 
   it('follows the origin to the next full hour there while the driver has not picked a time', async () => {
@@ -170,7 +170,7 @@ describe('departure', () => {
     await chooseOrigin(user);
 
     expect(departureText()).toBe('10 14 2026 01 00 PM');
-    expect(screen.getByText("CDT · origin's time zone")).toBeInTheDocument();
+    expect(screen.getByText('CDT')).toBeInTheDocument();
   });
 
   it("keeps the picked clock time and re-labels it in the origin's zone when an origin is chosen", async () => {
@@ -183,7 +183,7 @@ describe('departure', () => {
     await chooseOrigin(user);
 
     expect(departureText()).toBe('10 15 2026 09 30 AM');
-    expect(screen.getByText("CDT · origin's time zone")).toBeInTheDocument();
+    expect(screen.getByText('CDT')).toBeInTheDocument();
     await chooseDestination(user);
     await user.type(weightField(), '42000');
     await user.click(planButton());
@@ -256,7 +256,8 @@ describe('planning a trip', () => {
 
     await user.click(planButton());
 
-    expect(await screen.findByText('Finding routes…')).toBeInTheDocument();
+    // Twice: the results panel's progress line and the phone sheet's title, which share the words.
+    expect(await screen.findAllByText('Finding routes…')).toHaveLength(2);
     expect(planButton()).toBeDisabled();
     finish();
     expect(await screen.findByText('Route 1')).toBeInTheDocument();
@@ -273,11 +274,13 @@ describe('planning a trip', () => {
     const first = (await screen.findByText('Route 1')).closest('button')!;
     expect(first).toHaveTextContent('927 mi');
     expect(first).toHaveTextContent('14 h 55 min');
-    expect(first).toHaveTextContent('Arrives Thu Oct 15, 10:54 PM CDT');
+    expect(first).toHaveTextContent('Arrives 10:54 PM CDT');
+    expect(first).toHaveTextContent('Thu Oct 15');
     const third = screen.getByText('Route 3').closest('button')!;
     expect(third).toHaveTextContent('1,079 mi');
     expect(third).toHaveTextContent('16 h 13 min');
-    expect(third).toHaveTextContent('Arrives Fri Oct 16, 12:12 AM CDT');
+    expect(third).toHaveTextContent('Arrives 12:12 AM CDT');
+    expect(third).toHaveTextContent('Fri Oct 16');
   });
 
   it('draws every route on the map with the first one selected', async () => {

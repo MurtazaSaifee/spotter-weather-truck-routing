@@ -39,8 +39,6 @@ async function planTrip(user: UserEvent, plan: Plan) {
 }
 
 const card = (label: string) => screen.getByText(label).closest('button')!;
-const recommendation = () => screen.getByRole('region', { name: 'Recommended route' });
-const why = () => screen.getByRole('region', { name: 'Why this route' });
 
 beforeEach(() => {
   vi.useFakeTimers({ toFake: ['Date'] });
@@ -52,15 +50,12 @@ afterEach(() => {
 });
 
 describe('the recommendation', () => {
-  it('names the recommended route and selects it on the map', async () => {
+  it('selects the recommended route on the map', async () => {
     const user = userEvent.setup();
     renderApp();
 
     await planTrip(user, chicagoToDallasStormOnRouteOne);
 
-    expect(recommendation()).toHaveTextContent('Route 1');
-    expect(recommendation()).toHaveTextContent('969 mi');
-    expect(recommendation()).toHaveTextContent('14 h 48 min');
     const map = screen.getByRole('region', { name: 'Map' });
     expect(within(map).getByRole('button', { name: 'Route 1 on map' })).toHaveAttribute(
       'aria-pressed',
@@ -99,7 +94,7 @@ describe('the recommendation', () => {
     }
   });
 
-  it('lists the cards best first, with the rank, a Recommended mark and a Blocked mark', async () => {
+  it('lists the cards best first, with a Recommended mark and a Blocked mark', async () => {
     const user = userEvent.setup();
     renderApp();
 
@@ -112,11 +107,8 @@ describe('the recommendation', () => {
       'Route 2',
       'Route 3',
     ]);
-    expect(card('Route 1')).toHaveTextContent('Rank 1 of 3');
     expect(card('Route 1')).toHaveTextContent('Recommended');
-    expect(card('Route 2')).toHaveTextContent('Rank 2 of 3');
     expect(card('Route 2')).not.toHaveTextContent('Recommended');
-    expect(card('Route 3')).toHaveTextContent('Rank 3 of 3');
     expect(card('Route 3')).toHaveTextContent('Blocked by No Travel');
   });
 
@@ -150,68 +142,6 @@ describe('the recommendation', () => {
   });
 });
 
-describe('Why this route', () => {
-  it('compares the recommendation with each alternative on the criterion that separated them', async () => {
-    const user = userEvent.setup();
-    renderApp();
-
-    await planTrip(user, chicagoToDallasStormOnRouteOne);
-
-    const panel = why();
-    expect(panel).toHaveTextContent('Route 1 is recommended');
-    const [first, second] = within(panel).getAllByRole('listitem');
-    expect(first).toHaveTextContent('Against Route 2');
-    expect(first).toHaveTextContent('Fewer Severe miles: Route 1 has 0 mi, Route 2 has 50 mi.');
-    expect(second).toHaveTextContent('Against Route 3');
-    expect(second).toHaveTextContent('Blocked by No Travel: 29.4 mi of Route 3 is at No Travel.');
-  });
-
-  it.each([
-    [
-      'high_miles',
-      { recommended_value: 0, alternative_value: 50, best_average_risk: null },
-      'Fewer High miles: Route 1 has 0 mi, Route 2 has 50 mi.',
-    ],
-    [
-      'average_risk',
-      { recommended_value: 0.45, alternative_value: 0.9, best_average_risk: 0.45 },
-      'Lower average risk: Route 1 is 0.45, Route 2 is 0.90. Routes within 0.25 of the lowest (0.45) count as tied.',
-    ],
-    [
-      'average_risk',
-      { recommended_value: 0.45, alternative_value: null, best_average_risk: 0.45 },
-      'Lower average risk: Route 1 is 0.45, Route 2 has no forecast data to average.',
-    ],
-    [
-      'travel_time',
-      { recommended_value: 53_300, alternative_value: 53_684, best_average_risk: null },
-      'Shorter travel time: Route 1 takes 14 h 48 min, Route 2 takes 14 h 55 min.',
-    ],
-  ] as const)('explains a %s decision with both values', async (criterion, values, sentence) => {
-    const user = userEvent.setup();
-    renderApp();
-
-    await planTrip(user, {
-      ...chicagoToDallas,
-      routes: [routeOne, { ...routeTwo, deciding: { criterion, ...values } }],
-    });
-
-    expect(within(why()).getByRole('listitem')).toHaveTextContent(sentence);
-  });
-
-  it('has nothing to compare when there is only one route', async () => {
-    const user = userEvent.setup();
-    renderApp();
-
-    await planTrip(user, { ...chicagoToDallas, routes: [routeOne] });
-
-    expect(why()).toHaveTextContent(
-      'Route 1 is the only route found, so there is nothing to compare.',
-    );
-    expect(within(why()).queryByRole('listitem')).not.toBeInTheDocument();
-  });
-});
-
 describe('when every route is blocked', () => {
   it('warns not to travel and recommends nothing', async () => {
     const user = userEvent.setup();
@@ -220,23 +150,16 @@ describe('when every route is blocked', () => {
     await planTrip(user, chicagoToDallasAllBlocked);
 
     expect(screen.getByRole('alert')).toHaveTextContent('Do not travel at this departure time');
-    expect(screen.queryByRole('region', { name: 'Recommended route' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('region', { name: 'Why this route' })).not.toBeInTheDocument();
     expect(screen.queryByText('Recommended')).not.toBeInTheDocument();
   });
 
-  it('still shows every route, ranked and marked blocked', async () => {
+  it('still shows every route, marked blocked', async () => {
     const user = userEvent.setup();
     renderApp();
 
     await planTrip(user, chicagoToDallasAllBlocked);
 
-    for (const [label, rank] of [
-      ['Route 1', 1],
-      ['Route 2', 2],
-      ['Route 3', 3],
-    ] as const) {
-      expect(card(label)).toHaveTextContent(`Rank ${rank} of 3`);
+    for (const label of ['Route 1', 'Route 2', 'Route 3']) {
       expect(card(label)).toHaveTextContent('Blocked by No Travel');
     }
   });

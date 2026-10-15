@@ -5,7 +5,6 @@ import type { Plan, PlanRequest, SamplingInterval } from '../api/plan';
 import type { Place } from '../api/places';
 import type { RateLimitWait } from '../api/rateLimit';
 import { AppHeader } from './AppHeader';
-import { HealthStatus } from './HealthStatus';
 import { PlanResults } from './PlanResults';
 import { TripForm } from './TripForm';
 
@@ -75,7 +74,6 @@ export function PlannerPanel({
           onSelectRoute={onSelectRoute}
           onIntervalChange={onIntervalChange}
         />
-        <HealthStatus />
       </Stack>
     </Box>
   );

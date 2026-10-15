@@ -45,12 +45,11 @@ afterEach(() => {
 });
 
 describe('on a desktop', () => {
-  it('holds the forecast strip open before a trip is planned, so the map keeps its size', () => {
+  it('shows no forecast controls before a trip is planned', () => {
     renderApp();
 
-    const strip = screen.getByRole('region', { name: 'Forecast controls' });
-    expect(within(strip).getByText(/Plan a trip to see the weather/)).toBeInTheDocument();
-    expect(within(strip).queryByRole('slider')).not.toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: 'Forecast controls' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('slider')).not.toBeInTheDocument();
   });
 
   it('puts the forecast controls under the map, outside the planner panel', async () => {
@@ -132,11 +131,9 @@ describe('on a phone', () => {
     renderApp();
     await planChicagoToDallas(user);
 
-    expect(await screen.findByRole('region', { name: 'Recommended route' })).toBeInTheDocument();
-    expect(sheetHeader()).toHaveAccessibleName(/Route 1 recommended\. 927 mi/);
     const panel = screen.getByRole('complementary', { name: 'Trip planner' });
-    expect(within(panel).getByRole('region', { name: 'Why this route' })).toBeInTheDocument();
-    expect(within(panel).getByRole('region', { name: 'Routes' })).toBeInTheDocument();
+    expect(await within(panel).findByRole('region', { name: 'Routes' })).toBeInTheDocument();
+    expect(sheetHeader()).toHaveAccessibleName(/Route 1 recommended\. 927 mi/);
   });
 
   it('keeps the layer toggle and the slider over the map, not in the sheet', async () => {
@@ -185,7 +182,7 @@ describe('on a phone', () => {
     renderApp();
     await planChicagoToDallas(user); // typing in the form opened the sheet fully
 
-    await screen.findByRole('region', { name: 'Recommended route' });
+    await screen.findByRole('region', { name: 'Routes' });
 
     expect(sheetHeader()).toHaveAccessibleName(/Panel half open/);
   });

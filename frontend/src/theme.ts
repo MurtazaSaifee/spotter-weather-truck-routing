@@ -12,6 +12,9 @@ const FONT_FAMILY = [
   'sans-serif',
 ].join(',');
 
+/** Corner radius of every card, and of the place search's dropdown. */
+const CARD_RADIUS = 12;
+
 /** Smallest comfortable touch target, in px (WCAG 2.5.5 and platform guidance). */
 export const TOUCH_TARGET = 44;
 
@@ -83,7 +86,17 @@ export const theme = createTheme({
     },
     MuiPaper: {
       defaultProps: { elevation: 0 },
-      styleOverrides: { rounded: { borderRadius: 12 } },
+      styleOverrides: { rounded: { borderRadius: CARD_RADIUS } },
+    },
+    // The dropdown of place suggestions: a bordered card like the rest, with no shadow.
+    MuiAutocomplete: {
+      styleOverrides: {
+        paper: ({ theme }) => ({
+          border: `1px solid ${theme.palette.divider}`,
+          borderRadius: CARD_RADIUS,
+          boxShadow: 'none',
+        }),
+      },
     },
     MuiChip: { styleOverrides: { label: { fontWeight: 600 } } },
     // Below `md` the app is a phone layout: everything pressed with a thumb is 44 px or more.

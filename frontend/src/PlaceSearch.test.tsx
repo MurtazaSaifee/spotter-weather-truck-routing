@@ -105,10 +105,11 @@ describe('place search', () => {
 
     await user.type(screen.getByRole('combobox', { name: 'Origin' }), 'Ch');
 
-    expect(await screen.findByText('Type at least 3 characters')).toBeInTheDocument();
     // Longer than the debounce, so a request would have gone out by now.
     await new Promise((resolve) => setTimeout(resolve, 400));
     expect(queries).toEqual([]);
+    expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
+    expect(screen.queryByText(/at least 3 characters/)).not.toBeInTheDocument();
   });
 
   it('shows a loading state while suggestions are on their way', async () => {

@@ -213,36 +213,3 @@ describe('a rate-limited heatmap', () => {
     ).toBeInTheDocument();
   });
 });
-
-describe('a slow first response', () => {
-  it('says the server is waking up after 3 seconds without a response, until it answers', async () => {
-    let answer: () => void = () => undefined;
-    const answered = new Promise<void>((resolve) => {
-      answer = resolve;
-    });
-    answerWith({
-      plan: [
-        async () => {
-          await answered;
-          return HttpResponse.json(chicagoToDallas);
-        },
-      ],
-    });
-    const user = startUser();
-    renderApp();
-
-    await planChicagoToDallas(user);
-
-    expect(await screen.findByText('Finding routes…')).toBeInTheDocument();
-    expect(screen.queryByText(/waking up the server/i)).not.toBeInTheDocument();
-    await tick(2);
-    expect(screen.queryByText(/waking up the server/i)).not.toBeInTheDocument();
-    await tick(1);
-    expect(screen.getByText(/waking up the server/i)).toBeInTheDocument();
-
-    answer();
-
-    expect(await screen.findByText('Route 3')).toBeInTheDocument();
-    expect(screen.queryByText(/waking up the server/i)).not.toBeInTheDocument();
-  });
-});

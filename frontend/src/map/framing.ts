@@ -21,10 +21,10 @@ export type Insets = Partial<Record<'top' | 'right' | 'bottom' | 'left', number>
 
 export type Bounds = [LngLat, LngLat];
 
-/** The lower 48 states: what the map shows before there is a trip. */
-export const CONTINENTAL_US: Bounds = [
-  [-125, 24.5],
-  [-66.9, 49.5],
+/** The inhabited world, bar the poles: what the map shows before there is a trip. */
+export const WORLD_BOUNDS: Bounds = [
+  [-170, -55],
+  [180, 75],
 ];
 
 /** `insets` plus the column of map controls on the right: what framing and labels keep clear of. */

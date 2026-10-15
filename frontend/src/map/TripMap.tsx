@@ -2,14 +2,14 @@ import type { PickingInfo } from '@deck.gl/core';
 import { useTheme } from '@mui/material/styles';
 import * as maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   AttributionControl,
   Map,
-  type MapEvent,
   type MapRef,
   NavigationControl,
   Popup,
+  useMap,
 } from 'react-map-gl/maplibre';
 import type { Heatmap } from '../heatmap/payload';
 import type { PlannedRoute } from '../api/plan';
@@ -24,11 +24,12 @@ import {
   nearestDot,
   type CheckpointDot,
 } from './checkpointLayers';
+import { attachCommandRotate } from './commandRotate';
 import { DeckGLOverlay } from './DeckGLOverlay';
 import { HeatmapLayers } from './HeatmapLayers';
 import { createLayerStore } from './layerStore';
 import { useMapInsets } from '../layout/mapInsets';
-import { insetStyle } from './framing';
+import { insetStyle, WORLD_BOUNDS } from './framing';
 import { MapFraming } from './MapFraming';
 import { CollapsedAttribution, MapStyles } from './MapStyles';
 import { PlacePins } from './PlacePins';
@@ -54,17 +55,15 @@ const WEATHER_ATTRIBUTION =
 
 const MAP_STYLE = 'https://tiles.openfreemap.org/styles/positron';
 
-// Continental US.
-const INITIAL_VIEW_STATE = { longitude: -98.5, latitude: 39.5, zoom: 3.6 };
+// The whole world, so the map starts anywhere a trip might be. Fitting bounds (rather than a
+// zoom) works at any width, down to a 375 px phone.
+const INITIAL_VIEW_STATE = { bounds: WORLD_BOUNDS };
 
-/**
- * Keeps the map north-up. `dragRotate` and `touchPitch` are map props, but a twist of two fingers
- * and Shift+arrow rotate through handlers that only have a method for it. Pinch zoom and arrow
- * panning stay.
- */
-function lockNorthUp({ target }: MapEvent) {
-  target.touchZoomRotate.disableRotation();
-  target.keyboard.disableRotation();
+/** Makes a Command-drag turn the map, like Ctrl-drag; see `attachCommandRotate`. Inside a `Map`. */
+function CommandRotate() {
+  const { current: map } = useMap();
+  useEffect(() => (map ? attachCommandRotate(map.getMap()) : undefined), [map]);
+  return null;
 }
 
 interface TripMapProps {
@@ -213,17 +212,18 @@ export default function TripMap({
       initialViewState={INITIAL_VIEW_STATE}
       style={{ width: '100%', height: '100%', ...insetStyle(padding) }}
       attributionControl={false}
-      // A truck route needs no rotation or tilt, and nobody finds the Ctrl/right-drag gesture:
-      // the map stays north-up, so it has no compass either.
-      dragRotate={false}
+      // Rotating is as in Google Maps: Ctrl-drag (MapLibre's own), Command-drag (see
+      // `CommandRotate`), right-drag, a twist of two fingers, and the compass to get back to
+      // north. Tilting is of no use on a route map.
+      maxPitch={0}
       touchPitch={false}
-      onLoad={lockNorthUp}
     >
       <MapStyles />
+      <CommandRotate />
       {/* Collapses to an info button on a narrow map; every credit stays one tap away. */}
       <AttributionControl position="bottom-right" customAttribution={WEATHER_ATTRIBUTION} />
       <CollapsedAttribution />
-      <NavigationControl position="top-right" showCompass={false} />
+      <NavigationControl position="top-right" />
       <PlacePins origin={origin} destination={destination} />
       <MapFraming origin={origin} destination={destination} routes={paths} insets={padding} />
       <HeatmapLayers heatmap={heatmap} underlay={heatmapLayers} />

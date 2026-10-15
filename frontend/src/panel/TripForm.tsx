@@ -1,4 +1,4 @@
-import { Button, Skeleton, Stack, Typography } from '@mui/material';
+import { Button, Skeleton, Stack } from '@mui/material';
 import type { Dayjs } from 'dayjs';
 import { type FormEvent, lazy, Suspense, useMemo, useState } from 'react';
 import type { PlanRequest } from '../api/plan';
@@ -19,14 +19,9 @@ import { PlaceField } from './PlaceField';
 // need it: the rest of the form shows at once and the picker follows.
 const DeparturePicker = lazy(() => import('./DeparturePicker'));
 
-/** The picker's height with its caption beneath, so nothing moves when it arrives. */
+/** The picker's height, so nothing moves when it arrives. */
 function DeparturePickerPlaceholder() {
-  return (
-    <Stack aria-hidden="true">
-      <Skeleton variant="rounded" height={56} />
-      <Skeleton width="55%" height={20} sx={{ mt: 0.5, ml: 1.75 }} />
-    </Stack>
-  );
+  return <Skeleton variant="rounded" height={56} aria-hidden="true" />;
 }
 
 interface TripFormProps {
@@ -102,7 +97,7 @@ export function TripForm({
           value={departure}
           onChange={setPicked}
           timeZone={zone}
-          zoneSource={origin ? 'origin' : 'browser'}
+          showZone={origin !== null}
           nowMs={nowMs}
         />
       </Suspense>
@@ -110,11 +105,6 @@ export function TripForm({
       <Button type="submit" variant="contained" size="large" disabled={!isValid || isPlanning}>
         Plan trip
       </Button>
-      {(origin === null || destination === null) && (
-        <Typography variant="caption" color="text.secondary">
-          Choose an origin and a destination to plan a trip.
-        </Typography>
-      )}
     </Stack>
   );
 }

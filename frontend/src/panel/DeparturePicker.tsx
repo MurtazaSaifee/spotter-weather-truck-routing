@@ -10,14 +10,14 @@ interface DeparturePickerProps {
   onChange: (value: Dayjs | null) => void;
   /** The zone the clock is read in: the origin's, or the browser's before one is chosen. */
   timeZone: string;
-  /** Where that zone came from, for the caption. */
-  zoneSource: 'origin' | 'browser';
+  /** Name the zone (for example "CDT") under the field: only once an origin has set it. */
+  showZone: boolean;
   nowMs: number;
 }
 
 /**
  * A date-time picker for the departure. It blocks times outside the window the API
- * accepts and names the zone it reads the clock in. The picker stack is a big part of the
+ * accepts and, once an origin sets the zone, names it. The picker stack is a big part of the
  * app's code and nothing else uses it, so it lives here, with its own localisation provider,
  * and the form loads this module lazily.
  */
@@ -25,13 +25,12 @@ export default function DeparturePicker({
   value,
   onChange,
   timeZone,
-  zoneSource,
+  showZone,
   nowMs,
 }: DeparturePickerProps) {
   const { min, max } = departureWindow(nowMs, timeZone);
   const error = departureError(value, nowMs);
-  const zone = zoneAbbreviation(timeZone, value?.isValid() ? value : nowMs);
-  const caption = `${zone} · ${zoneSource === 'origin' ? "origin's" : "your browser's"} time zone`;
+  const zone = showZone ? zoneAbbreviation(timeZone, value?.isValid() ? value : nowMs) : undefined;
 
   return (
     <LocalizationProvider dateAdapter={AdapterDayjs}>
@@ -45,7 +44,7 @@ export default function DeparturePicker({
         // A clock's minutes are enough; the API plans to the minute.
         views={['year', 'month', 'day', 'hours', 'minutes']}
         slotProps={{
-          textField: { error: error !== null, helperText: error ?? caption },
+          textField: { error: error !== null, helperText: error ?? zone },
         }}
       />
     </LocalizationProvider>

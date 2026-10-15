@@ -3,13 +3,11 @@ import { RESULTS_ANCHOR } from '../layout/AppShell';
 import type { ApiError } from '../api/client';
 import type { Plan, SamplingInterval } from '../api/plan';
 import { describeWait, type RateLimitWait } from '../api/rateLimit';
-import { RiskLegend } from '../risk/RiskLegend';
 import { routeLabels, routesByRank } from '../trip/ranking';
+import { AllBlockedWarning } from './AllBlockedWarning';
 import { IntervalToggle } from './IntervalToggle';
 import { PlanNotices } from './PlanNotices';
-import { AllBlockedWarning, Recommendation, WhyThisRoute } from './Recommendation';
 import { RouteCard } from './RouteCard';
-import { WakingUpNotice } from './WakingUpNotice';
 
 interface PlanResultsProps {
   isPlanning: boolean;
@@ -56,7 +54,6 @@ export function PlanResults({
             Finding routes…
           </Typography>
         </Stack>
-        <WakingUpNotice />
         <ResultsSkeleton />
       </Stack>
     );
@@ -66,26 +63,11 @@ export function PlanResults({
 
   const labels = routeLabels(plan.routes);
   const ranked = routesByRank(plan.routes);
-  const recommended = plan.routes.find((route) => route.id === plan.recommended_route_id);
 
   return (
     <Stack spacing={2} {...{ [RESULTS_ANCHOR]: '' }}>
       {alert}
       {plan.all_blocked_warning && <AllBlockedWarning warning={plan.all_blocked_warning} />}
-      {recommended && (
-        <>
-          <Recommendation
-            route={recommended}
-            label={labels[recommended.id]}
-            timeZone={plan.origin_time_zone}
-          />
-          <WhyThisRoute
-            recommended={recommended}
-            alternatives={ranked.filter((route) => route.id !== recommended.id)}
-            labels={labels}
-          />
-        </>
-      )}
       <PlanNotices notices={plan.notices} />
       <IntervalToggle
         interval={plan.interval_miles}
@@ -102,7 +84,6 @@ export function PlanResults({
             key={route.id}
             route={route}
             label={labels[route.id]}
-            routeCount={plan.routes.length}
             recommended={route.id === plan.recommended_route_id}
             timeZone={plan.origin_time_zone}
             selected={route.id === selectedRouteId}
@@ -110,19 +91,17 @@ export function PlanResults({
           />
         ))}
       </Stack>
-      <RiskLegend />
     </Stack>
   );
 }
 
 /**
- * Stands where the results will be, with their shapes and heights (a recommendation, then
- * route cards), so the panel does not jump when the plan arrives.
+ * Stands where the results will be, with their shapes and heights (route cards), so the
+ * panel does not jump when the plan arrives.
  */
 function ResultsSkeleton() {
   return (
     <Stack spacing={2} aria-hidden="true">
-      <Skeleton variant="rounded" height={92} sx={{ borderRadius: 3 }} />
       {[0, 1, 2].map((index) => (
         <Paper key={index} variant="outlined" sx={{ p: 2, borderWidth: 2 }}>
           <Skeleton width="40%" />

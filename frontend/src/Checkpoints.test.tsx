@@ -288,20 +288,3 @@ describe('risk at a checkpoint', () => {
     expect(details).toHaveTextContent('Gusts alone: 52 mph would be No Travel');
   });
 });
-
-describe('risk legend', () => {
-  it('explains every risk level, including No data, beside the routes', async () => {
-    answerPlans();
-    const user = userEvent.setup();
-    renderApp();
-    await planTrip(user);
-
-    const legend = screen.getByRole('region', { name: 'Risk legend' });
-
-    expect(
-      within(legend)
-        .getAllByRole('listitem')
-        .map((item) => item.textContent),
-    ).toEqual(['Low', 'Moderate', 'High', 'Severe', 'No Travel', 'No data']);
-  });
-});

@@ -23,7 +23,7 @@ export function LoadWeightField({ text, onTextChange }: LoadWeightFieldProps) {
       onChange={(event) => onTextChange(formatWeightInput(event.target.value))}
       onBlur={() => setTouched(true)}
       error={showError}
-      helperText={showError ? message : 'Cargo only. The empty truck is added for routing.'}
+      helperText={showError ? message : undefined}
       slotProps={{
         input: { endAdornment: <InputAdornment position="end">lb</InputAdornment> },
         htmlInput: { inputMode: 'numeric', autoComplete: 'off' },

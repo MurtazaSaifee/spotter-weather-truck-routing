@@ -18,7 +18,7 @@ import { HEATMAP_LAYERS, type HeatmapLayer } from './layer';
 export type HeatmapStatus = 'idle' | 'loading' | 'ready' | 'error';
 
 interface HeatmapControlsProps {
-  /** `idle` is before any trip is planned: the strip is held open, empty, so the map never resizes. */
+  /** `idle` is before any trip is planned: nothing is rendered. */
   status: HeatmapStatus;
   /** Set while the heatmap request waits out a short rate limit before its automatic retry. */
   rateLimitWait: RateLimitWait | null;
@@ -32,8 +32,8 @@ interface HeatmapControlsProps {
   onRetry: () => void;
 }
 
-// What the strip needs at its two widths; `Stage` reserves it in every state, so the map
-// above never changes size when the heatmap arrives.
+// What the strip needs at its two widths; it reserves that in every state once a trip is
+// planned, so the map above never changes size when the heatmap arrives.
 // Past MID the slider's row fits on one line; past WIDE the toggle and legend do too.
 const MID = '@container (min-width: 540px)';
 const WIDE = '@container (min-width: 600px)';
@@ -54,16 +54,14 @@ export function HeatmapControls({
   route,
   onRetry,
 }: HeatmapControlsProps) {
+  if (status === 'idle') return null;
   const ready = status === 'ready' && departure !== null && timeZone !== null;
   return (
     <Box
       component="section"
       aria-label="Forecast controls"
-      sx={{
-        // The strip's own width, not the window's, decides how it lays out.
-        containerType: 'inline-size',
-        display: { xs: status === 'idle' ? 'none' : 'block', md: 'block' },
-      }}
+      // The strip's own width, not the window's, decides how it lays out.
+      sx={{ containerType: 'inline-size' }}
     >
       <Box
         sx={{
@@ -85,11 +83,6 @@ export function HeatmapControls({
           gap: { xs: 0.5, md: 1 },
         }}
       >
-        {status === 'idle' && (
-          <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center' }}>
-            Plan a trip to see the weather along it, hour by hour.
-          </Typography>
-        )}
         {status === 'loading' && (
           <Box
             role="status"

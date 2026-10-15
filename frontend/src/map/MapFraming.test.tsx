@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Place } from '../api/places';
 import { MapFraming } from './MapFraming';
 import { TOUCH_TARGET } from '../theme';
-import { CONTINENTAL_US, type Bounds } from './framing';
+import { WORLD_BOUNDS, type Bounds } from './framing';
 
 // MapLibre sets its control column in from the edge by this much (its own CSS margin).
 const CONTROL_MARGIN_PX = 10;
@@ -72,7 +72,7 @@ function lastFit() {
 }
 
 describe('framing the map', () => {
-  it('shows the whole continental US when there is nothing to show yet, clear of the insets', () => {
+  it('shows the whole world when there is nothing to show yet, clear of the insets', () => {
     render(
       <MapFraming
         origin={null}
@@ -82,11 +82,10 @@ describe('framing the map', () => {
       />,
     );
 
-    const { bounds, padding, maxZoom } = lastFit();
-    expect(bounds).toEqual(CONTINENTAL_US);
+    const { bounds, padding } = lastFit();
+    expect(bounds).toEqual(WORLD_BOUNDS);
     expect(padding.top).toBeGreaterThanOrEqual(150);
     expect(padding.bottom).toBeGreaterThanOrEqual(300);
-    expect(maxZoom).toBeLessThanOrEqual(6);
   });
 
   it('fits the routes inside the insets, so none lands under a sheet or a card', () => {
