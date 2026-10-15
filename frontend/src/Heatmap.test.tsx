@@ -48,6 +48,14 @@ async function planChicagoToDallas(user: UserEvent) {
 
 const slider = () => screen.findByRole('slider', { name: 'Hours after departure' });
 
+/** The slider's label: the clock time at the origin, and the hours after departure beside it. */
+function expectLabel(clock: string, offset: string) {
+  // Scoped to the strip: "Departure" is also the name of the departure field.
+  const controls = within(screen.getByRole('region', { name: 'Forecast controls' }));
+  expect(controls.getByText(clock)).toBeInTheDocument();
+  expect(controls.getByText(offset)).toBeInTheDocument();
+}
+
 beforeEach(() => {
   vi.useFakeTimers({ toFake: ['Date'] });
   vi.setSystemTime(NOW);
@@ -94,24 +102,24 @@ describe('the forecast heatmap', () => {
     expect(screen.getByRole('img', { name: 'Forecast heatmap' })).toHaveTextContent('49 frames');
   });
 
-  it('labels the slider with the hours after departure and the clock time at the origin', async () => {
+  it('labels the slider with the clock time at the origin and the hours after departure', async () => {
     answerWith(heatmapOk);
     const user = userEvent.setup();
     renderApp();
 
     await planChicagoToDallas(user);
     const hours = await slider();
-    expect(screen.getByText('T+0h · Thu 08:00 CDT')).toBeInTheDocument();
+    expectLabel('Thu 8:00 AM CDT', 'Departure');
 
     hours.focus();
     await user.keyboard('{ArrowRight}');
-    expect(screen.getByText('T+1h · Thu 09:00 CDT')).toBeInTheDocument();
+    expectLabel('Thu 9:00 AM CDT', '+1 h');
 
     await user.keyboard('{ArrowRight>13/}');
-    expect(screen.getByText('T+14h · Thu 22:00 CDT')).toBeInTheDocument();
+    expectLabel('Thu 10:00 PM CDT', '+14 h');
 
     await user.keyboard('{End}');
-    expect(screen.getByText('T+48h · Sat 08:00 CDT')).toBeInTheDocument();
+    expectLabel('Sat 8:00 AM CDT', '+48 h');
   });
 
   it('does not ask the server again as the slider moves', async () => {
@@ -141,7 +149,7 @@ describe('the forecast heatmap', () => {
     await user.click(ten);
     await vi.waitFor(() => expect(ten).toHaveAttribute('aria-pressed', 'true'));
 
-    expect(screen.getByText('T+3h · Thu 11:00 CDT')).toBeInTheDocument();
+    expectLabel('Thu 11:00 AM CDT', '+3 h');
     expect(requests).toHaveLength(1);
   });
 
@@ -157,7 +165,7 @@ describe('the forecast heatmap', () => {
 
     await user.click(screen.getByRole('button', { name: 'Plan trip' }));
 
-    expect(await screen.findByText('T+0h · Thu 08:00 CDT')).toBeInTheDocument();
+    await vi.waitFor(() => expectLabel('Thu 8:00 AM CDT', 'Departure'));
   });
 
   it('offers a retry when the heatmap cannot be loaded, leaving the routes in place', async () => {
@@ -248,7 +256,7 @@ describe('the heatmap layer toggle', () => {
     await user.click(layerButton('Rain'));
 
     expect(screen.getByRole('img', { name: 'Forecast heatmap' })).toHaveTextContent('rain layer');
-    expect(screen.getByText('T+5h · Thu 13:00 CDT')).toBeInTheDocument();
+    expectLabel('Thu 1:00 PM CDT', '+5 h');
     expect(requests).toHaveLength(1);
   });
 });

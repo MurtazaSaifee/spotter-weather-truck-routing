@@ -15,7 +15,7 @@ vi.mock('@deck.gl/layers', () => ({
   },
 }));
 
-/** A layer's 49 frames, each named by layer and hour: `wind7` is the wind at T+7h. */
+/** A layer's 49 frames, each named by layer and hour: `wind7` is the wind at hour 7. */
 function framesOf(layer: string): HeatmapBitmaps {
   return {
     bitmaps: Array.from({ length: 49 }, (_, hour) => `${layer}${hour}` as unknown as ImageBitmap),

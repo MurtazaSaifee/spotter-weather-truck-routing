@@ -35,7 +35,7 @@ interface HeatmapControlsProps {
 // What the strip needs at its two widths; `Stage` reserves it in every state, so the map
 // above never changes size when the heatmap arrives.
 // Past MID the slider's row fits on one line; past WIDE the toggle and legend do too.
-const MID = '@container (min-width: 480px)';
+const MID = '@container (min-width: 540px)';
 const WIDE = '@container (min-width: 600px)';
 
 /**
@@ -67,7 +67,7 @@ export function HeatmapControls({
     >
       <Box
         sx={{
-          '--strip-min': '148px',
+          '--strip-min': '152px',
           [MID]: { '--strip-min': '120px' },
           [WIDE]: { '--strip-min': '100px' },
           bgcolor: 'background.paper',
@@ -135,13 +135,13 @@ export function HeatmapControls({
                 display: 'grid',
                 alignItems: 'center',
                 columnGap: 2,
-                gridTemplateColumns: '1fr auto',
-                gridTemplateAreas: '"label status" "slider slider"',
+                gridTemplateColumns: 'minmax(0, 1fr)',
+                gridTemplateAreas: '"label" "status" "slider"',
                 [MID]: {
-                  gridTemplateColumns: '172px minmax(120px, 1fr) 150px',
+                  gridTemplateColumns: '200px minmax(120px, 1fr) 150px',
                   gridTemplateAreas: '"label slider status"',
                 },
-                [WIDE]: { gridTemplateColumns: '172px minmax(120px, 1fr) 176px' },
+                [WIDE]: { gridTemplateColumns: '200px minmax(120px, 1fr) 176px' },
               }}
             >
               <HourSlider departure={departure} timeZone={timeZone} />
@@ -197,16 +197,39 @@ function LayerToggle({
 function HourSlider({ departure, timeZone }: { departure: string; timeZone: string }) {
   const store = useForecastHourStore();
   const hour = useForecastHour();
-  const label = forecastLabel(departure, hour, timeZone);
+  const { clock, offset } = forecastLabel(departure, hour, timeZone);
   return (
     <>
       <Typography
         variant="body2"
         noWrap
-        sx={{ gridArea: 'label', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}
+        // The clock time is never cut; the offset beside it gives way first. Both columns are
+        // wide enough for the longest: `Wed 12:00 PM MDT` with `Departure`.
+        sx={{
+          gridArea: 'label',
+          display: 'flex',
+          alignItems: 'baseline',
+          gap: 0.75,
+          minWidth: 0,
+          fontVariantNumeric: 'tabular-nums',
+        }}
         aria-live="off"
       >
-        {label}
+        <Box component="span" sx={{ flex: 'none', fontWeight: 600 }}>
+          {clock}
+        </Box>
+        <Box
+          component="span"
+          sx={{
+            minWidth: 0,
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            color: 'text.secondary',
+            fontSize: '0.75rem',
+          }}
+        >
+          {offset}
+        </Box>
       </Typography>
       <Slider
         aria-label="Hours after departure"
@@ -214,7 +237,7 @@ function HourSlider({ departure, timeZone }: { departure: string; timeZone: stri
         max={MAX_FORECAST_HOUR}
         step={1}
         value={hour}
-        getAriaValueText={() => label}
+        getAriaValueText={() => `${clock}, ${offset}`}
         onChange={(_, value) => store.set(typeof value === 'number' ? value : (value[0] ?? 0))}
         size="small"
         sx={{
