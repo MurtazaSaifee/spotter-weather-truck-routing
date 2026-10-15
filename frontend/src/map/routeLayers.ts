@@ -1,6 +1,7 @@
 import type { PickingInfo } from '@deck.gl/core';
 import { PathStyleExtension, type PathStyleExtensionProps } from '@deck.gl/extensions';
 import { PathLayer } from '@deck.gl/layers';
+import { theme } from '../theme';
 import { rgb } from './colour';
 import type { LngLat } from './polyline';
 import type { LabelTone } from './routeLabels';
@@ -19,12 +20,21 @@ interface RouteLayerOptions {
   /** Blocked routes are drawn dashed. */
   blockedRouteIds: ReadonlySet<string>;
   onSelectRoute: (id: string) => void;
-  /** `#rrggbb` colours: the selected route stands out, the recommended one is a darker shade. */
+  /**
+   * `#rrggbb` colours: the selected route is the only one in a highlight. A recommended route
+   * that is not selected takes `RECOMMENDED_ROUTE_COLOR`, a neutral dark.
+   */
   selectedColor: string;
   recommendedColor: string;
   otherColor: string;
 }
 
+/**
+ * A recommended route that is not selected is drawn in this and its label is bordered in it, so
+ * the selected route's blue is the only highlight on the map. One constant keeps the line and
+ * the label from drifting apart.
+ */
+export const RECOMMENDED_ROUTE_COLOR = theme.palette.grey[700];
 export const RECOMMENDED_WIDTH_PX = 9;
 export const SELECTED_WIDTH_PX = 7;
 export const OTHER_WIDTH_PX = 4;

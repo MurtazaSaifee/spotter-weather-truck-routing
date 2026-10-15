@@ -5,6 +5,7 @@ import { theme } from '../theme';
 import { formatAverageRisk, formatDuration, formatMilesExact } from '../trip/format';
 import type { LngLat } from './polyline';
 import { rgb } from './colour';
+import { RECOMMENDED_ROUTE_COLOR } from './routeLayers';
 
 /** A route's label on the map: where it sits and what it says. */
 export interface RouteLabel {
@@ -274,10 +275,11 @@ function sample(path: LngLat[], screen: Point[], project: LabelView['project']):
 
 const { palette } = theme;
 const TEXT_COLOR = rgb(palette.text.primary);
-// The same colours as the route lines (see TripMap); a blocked route's is the error red.
+// The same colours as the route lines (see TripMap); a blocked route's is the error red. Only the
+// selected route's is blue.
 const BORDER_COLORS: Record<LabelTone, [number, number, number]> = {
   selected: rgb(palette.primary.main),
-  recommended: rgb(palette.primary.dark),
+  recommended: rgb(RECOMMENDED_ROUTE_COLOR),
   blocked: rgb(palette.error.main),
   plain: rgb(palette.grey[500]),
 };

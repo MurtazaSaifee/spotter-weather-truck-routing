@@ -36,6 +36,7 @@ import { placePopup, POPUP_HEIGHT_PX, POPUP_WIDTH_PX, type PopupAnchor } from '.
 import { LabelPlacement } from './LabelPlacement';
 import {
   createRouteLayers,
+  RECOMMENDED_ROUTE_COLOR,
   ROUTE_LAYER_IDS,
   ROUTE_PICKING_RADIUS_PX,
   TOUCH_PICKING_RADIUS_PX,
@@ -187,7 +188,7 @@ export default function TripMap({
       blockedRouteIds,
       onSelectRoute,
       selectedColor: theme.palette.primary.main,
-      recommendedColor: theme.palette.primary.dark,
+      recommendedColor: RECOMMENDED_ROUTE_COLOR,
       otherColor: theme.palette.grey[500],
     }),
     ...createCheckpointLayers({ dots, selectedRouteId }),

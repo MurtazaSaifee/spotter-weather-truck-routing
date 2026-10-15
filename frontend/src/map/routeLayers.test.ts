@@ -1,10 +1,12 @@
 import { PathStyleExtension } from '@deck.gl/extensions';
 import { describe, expect, it } from 'vitest';
+import { theme } from '../theme';
 import { rgb } from './colour';
 import {
   createRouteLayers,
   CASING_EXTRA_PX,
   OTHER_WIDTH_PX,
+  RECOMMENDED_ROUTE_COLOR,
   RECOMMENDED_WIDTH_PX,
   ROLE_STYLES,
   routeRole,
@@ -85,6 +87,19 @@ describe('route layers', () => {
     expect(both.color).toEqual(rgb(COLORS.selectedColor));
   });
 
+  it('leave the selected route as the only one in the selection colour', () => {
+    const selectionColour = rgb(COLORS.selectedColor);
+
+    for (const selectedRouteId of ['route-1', 'route-2', 'route-3']) {
+      const all = layers({ selectedRouteId });
+
+      const inSelectionColour = paths.filter((p) =>
+        drawn(all, p.id).color.every((channel, i) => channel === selectionColour[i]),
+      );
+      expect(inSelectionColour.map((p) => p.id)).toEqual([selectedRouteId]);
+    }
+  });
+
   it('draw blocked routes dashed, whether or not they are selected, and only them', () => {
     const blocked = new Set(['route-1', 'route-3']);
 
@@ -149,6 +164,13 @@ describe('route layers', () => {
         .every((layer) => (layer.props.data as unknown[]).length === 0),
     ).toBe(true);
     expect(drawn(all, 'route-1').alpha).toBe(255);
+  });
+});
+
+describe('the colour of a recommended route that is not selected', () => {
+  it('is neither of the blues, so that only the selected route looks highlighted', () => {
+    expect(RECOMMENDED_ROUTE_COLOR).not.toBe(theme.palette.primary.main);
+    expect(RECOMMENDED_ROUTE_COLOR).not.toBe(theme.palette.primary.dark);
   });
 });
 

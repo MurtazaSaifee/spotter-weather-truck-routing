@@ -1,7 +1,18 @@
 import { describe, expect, it } from 'vitest';
 import { routeOne, routeThree, routeTwo } from '../test/fixtures/plan';
+import { theme } from '../theme';
+import { rgb } from './colour';
 import type { LngLat } from './polyline';
-import { labelSize, placeLabels, routeLabelText, type LabelView } from './routeLabels';
+import {
+  createRouteLabelLayer,
+  labelSize,
+  placeLabels,
+  routeLabelText,
+  type LabelTone,
+  type LabelView,
+  type RouteLabel,
+} from './routeLabels';
+import { RECOMMENDED_ROUTE_COLOR } from './routeLayers';
 
 describe('route label text', () => {
   it('names the route, its time and that it is recommended, with the average risk', () => {
@@ -41,6 +52,27 @@ describe('route label text', () => {
         detail: 'full',
       }),
     ).toContain('Avg risk n/a');
+  });
+});
+
+describe('the border of a label', () => {
+  const borderOf = (tone: LabelTone) => {
+    const { getBorderColor } = createRouteLabelLayer([], () => undefined).props;
+    return Array.from(
+      (getBorderColor as unknown as (label: RouteLabel) => number[])({ tone } as RouteLabel),
+    );
+  };
+
+  it('is the blue of the selection for the selected route only', () => {
+    const blue = [theme.palette.primary.main, theme.palette.primary.dark].map(rgb);
+
+    expect(borderOf('selected')).toEqual(rgb(theme.palette.primary.main));
+    for (const tone of ['recommended', 'blocked', 'plain'] as const)
+      expect(blue).not.toContainEqual(borderOf(tone));
+  });
+
+  it('matches the line of a recommended route that is not selected', () => {
+    expect(borderOf('recommended')).toEqual(rgb(RECOMMENDED_ROUTE_COLOR));
   });
 });
 
