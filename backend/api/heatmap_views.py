@@ -21,8 +21,6 @@ from .schema_examples import (
 )
 from .serializers import (
     HEATMAP_DEPARTURE_GRACE,
-    NORTH_AMERICA_LAT,
-    NORTH_AMERICA_LNG,
     LoadWeightField,
     OffsetDateTimeField,
     check_departure_window,
@@ -44,8 +42,7 @@ class HeatmapRequestSerializer(serializers.Serializer):
         max_length=MAX_GEOMETRIES,
         help_text=(
             "The routes on screen, each as the encoded polyline (precision 5) the plan "
-            f"returned. At most {MAX_GEOMETRIES}, each of at most {MAX_VERTICES:,} vertices "
-            "and inside North America."
+            f"returned. At most {MAX_GEOMETRIES}, each of at most {MAX_VERTICES:,} vertices."
         ),
     )
     departure = OffsetDateTimeField(
@@ -74,10 +71,10 @@ def _decode(encoded: str) -> list[Point]:
         raise serializers.ValidationError("A route needs at least two vertices.")
     if len(route) > MAX_VERTICES:
         raise serializers.ValidationError(f"A route can have at most {MAX_VERTICES:,} vertices.")
-    south, north = NORTH_AMERICA_LAT
-    west, east = NORTH_AMERICA_LNG
-    if not all(south <= lat <= north and west <= lng <= east for lat, lng in route):
-        raise serializers.ValidationError("This route is outside North America.")
+    if not all(-90 <= lat <= 90 and -180 <= lng <= 180 for lat, lng in route):
+        raise serializers.ValidationError(
+            "A route needs latitudes within 90 and longitudes within 180."
+        )
     return route
 
 

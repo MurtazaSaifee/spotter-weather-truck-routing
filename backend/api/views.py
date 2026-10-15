@@ -67,10 +67,10 @@ class PlaceSuggestionsView(APIView):
     throttle_classes: ClassVar = [SuggestionRateLimit]
 
     @extend_schema(
-        summary="Suggest North American places",
+        summary="Suggest places",
         description=(
-            f"Up to {places.MAX_SUGGESTIONS} suggestions from HERE Autosuggest, limited to the "
-            "United States, Canada and Mexico. If HERE fails, Photon answers in the same shape; "
+            f"Up to {places.MAX_SUGGESTIONS} suggestions from HERE Autosuggest, for places "
+            "anywhere in the world. If HERE fails, Photon answers in the same shape; "
             "`provider` says which one did. Each suggestion carries the IANA time zone at its "
             f"coordinates, resolved offline. {limit_text('suggest')}"
         ),
@@ -97,7 +97,7 @@ class PlanView(APIView):
     @extend_schema(
         summary="Plan a truck trip",
         description=(
-            "Up to three distinct truck routes between two North American places, fastest "
+            "Up to three distinct truck routes between two places, fastest "
             "first, with travel times that account for the truck's weight and the traffic "
             "expected at departure. Every route has checkpoints at the chosen interval, each "
             "with the truck's ETA, the forecast for that hour and a risk level for the load. "

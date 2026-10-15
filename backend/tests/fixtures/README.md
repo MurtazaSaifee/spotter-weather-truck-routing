@@ -6,6 +6,10 @@ respx. An edge case is a hand-edited copy made inside the test, never a second f
 
 Scrub secrets before saving: replace the HERE key with `REDACTED` anywhere it could appear.
 
+The two places files were recorded while place search was limited to North America. The app no
+longer sends the `in` or `bbox` parameter, so their request column is what was recorded, not
+what the app sends today.
+
 | File | Request | Recorded |
 |---|---|---|
 | `places/here_autosuggest_chicago.json` | `GET autosuggest.search.hereapi.com/v1/autosuggest?q=Chicago&in=countryCode:USA,CAN,MEX&at=39.5,-98.5&limit=8` | 2026-10-14 |

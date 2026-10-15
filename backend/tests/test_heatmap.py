@@ -321,10 +321,20 @@ def test_a_geometry_needs_at_least_two_vertices(client):
     error_of(post_heatmap(client, [encode_polyline([(40.0, -100.0)])]), "geometries")
 
 
-def test_a_geometry_outside_north_america_is_refused(client):
-    paris = encode_polyline([(48.8, 2.3), (48.9, 2.5)])
+def test_a_geometry_on_another_continent_is_accepted(client):
+    london_to_paris = encode_polyline([(51.51, -0.13), (48.86, 2.35)])
 
-    error_of(post_heatmap(client, [paris]), "geometries")
+    body = heatmap(client, [london_to_paris])
+
+    # The grid's south west corner lies just beyond Paris, the route's southern end, and London.
+    assert body["grid"]["origin_lat"] == pytest.approx(48.86, abs=0.5)
+    assert body["grid"]["origin_lng"] == pytest.approx(-0.13, abs=1.0)
+    assert body["indices"]
+
+
+def test_a_geometry_with_coordinates_that_are_not_on_earth_is_refused(client):
+    error_of(post_heatmap(client, [encode_polyline([(40.0, -100.0), (95.0, -99.0)])]), "geometries")
+    error_of(post_heatmap(client, [encode_polyline([(40.0, -100.0), (41.0, 181.0)])]), "geometries")
 
 
 def test_a_geometry_with_too_many_vertices_is_refused(client):

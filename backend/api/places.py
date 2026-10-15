@@ -1,7 +1,7 @@
 """Places adapter: address suggestions from HERE Autosuggest, with Photon as the fallback.
 
 ``suggest`` is the whole interface. Both providers are normalised to the same ``Place``
-shape and restricted to North America. A place's time zone is resolved offline from its
+shape, for places anywhere in the world. A place's time zone is resolved offline from its
 coordinates, so choosing a place never costs another API call.
 """
 
@@ -23,16 +23,13 @@ MAX_QUERY_LENGTH = 200
 MAX_SUGGESTIONS = 8
 
 HERE_AUTOSUGGEST_URL = "https://autosuggest.search.hereapi.com/v1/autosuggest"
-HERE_COUNTRIES = "USA,CAN,MEX"
-# Autosuggest needs a search centre. This is the middle of the continent; it only biases
-# the ranking, because the country filter does the restricting.
-HERE_SEARCH_CENTRE = "39.5,-98.5"
+# Autosuggest needs a search centre when it has no country filter. Latitude 0, longitude 0
+# favours no country or continent; it only biases the ranking, and restricts nothing.
+HERE_SEARCH_CENTRE = "0,0"
 HERE_TIMEOUT = httpx.Timeout(3.0)
 
 PHOTON_URL = "https://photon.komoot.io/api/"
-# Photon takes west,south,east,north. It rejects requests without a User-Agent.
-PHOTON_NORTH_AMERICA_BBOX = "-170,14,-50,72"
-PHOTON_COUNTRY_CODES = {"US", "CA", "MX"}
+# Photon rejects requests without a User-Agent.
 PHOTON_USER_AGENT = "spotter-truck-routing-takehome/0.1"
 # Photon is a free public service whose latency swings from 100 ms to 20 s. The driver is
 # typing, so give up quickly.
@@ -62,7 +59,7 @@ class PlacesUnavailableError(ApiError):
 
 
 def suggest(query: str) -> Suggestions:
-    """Up to ``MAX_SUGGESTIONS`` North American places matching ``query``.
+    """Up to ``MAX_SUGGESTIONS`` places, anywhere in the world, matching ``query``.
 
     HERE answers first. If it errors or times out, Photon answers instead, in the same
     shape. If both fail the caller gets ``PlacesUnavailableError``.
@@ -87,7 +84,6 @@ def _here_places(query: str) -> list[Place]:
         HERE_AUTOSUGGEST_URL,
         params={
             "q": query,
-            "in": f"countryCode:{HERE_COUNTRIES}",
             "at": HERE_SEARCH_CENTRE,
             "limit": MAX_SUGGESTIONS,
             "apiKey": settings.HERE_API_KEY,
@@ -111,21 +107,15 @@ def _here_label(item: dict[str, Any]) -> str:
 def _photon_places(query: str) -> list[Place]:
     response = httpx.get(
         PHOTON_URL,
-        params={"q": query, "limit": MAX_SUGGESTIONS, "bbox": PHOTON_NORTH_AMERICA_BBOX},
+        params={"q": query, "limit": MAX_SUGGESTIONS},
         headers={"User-Agent": PHOTON_USER_AGENT},
         timeout=PHOTON_TIMEOUT,
     )
     response.raise_for_status()
     features: list[dict[str, Any]] = response.json()["features"]
-    # The bounding box also covers the Caribbean and Central America.
-    in_scope = [
-        feature
-        for feature in features
-        if feature["properties"].get("countrycode") in PHOTON_COUNTRY_CODES
-    ]
     return [
         _place(_photon_label(feature["properties"]), lat, lng)
-        for feature in in_scope[:MAX_SUGGESTIONS]
+        for feature in features[:MAX_SUGGESTIONS]
         for lng, lat in [feature["geometry"]["coordinates"]]
     ]
 

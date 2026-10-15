@@ -153,8 +153,8 @@ def test_the_vehicle_weight_is_the_empty_truck_plus_the_load_in_kilograms(
             {"destination": {**DALLAS, "lat": DALLAS["lat"] + 0.000001}, "origin": DALLAS},
             "destination",
         ),
-        ({"origin": {**CHICAGO, "lat": 51.5, "lng": -0.12}}, "origin"),
-        ({"destination": {**DALLAS, "lat": -33.9, "lng": 151.2}}, "destination"),
+        ({"origin": {**CHICAGO, "lat": 90.5}}, "origin"),
+        ({"destination": {**DALLAS, "lng": -180.5}}, "destination"),
         ({"destination": {"label": "Nowhere"}}, "destination"),
         ({"departure": minutes_from_now(-16)}, "departure"),
         ({"departure": minutes_from_now(48 * 60 + 1)}, "departure"),
@@ -168,8 +168,8 @@ def test_the_vehicle_weight_is_the_empty_truck_plus_the_load_in_kilograms(
     ids=[
         "same place",
         "same place to 5 decimals",
-        "origin overseas",
-        "destination overseas",
+        "origin latitude beyond 90",
+        "destination longitude beyond -180",
         "destination without coordinates",
         "departure 16 minutes ago",
         "departure just over 48 hours ahead",
@@ -191,6 +191,18 @@ def test_invalid_trips_are_rejected_with_a_message_for_the_field_and_never_reach
     assert body["code"] == "validation_error"
     assert field in body["details"]["fields"]
     assert not here.called
+
+
+def test_a_trip_on_another_continent_is_accepted(client, here):
+    london = {"label": "London, United Kingdom", "lat": 51.5074, "lng": -0.1278}
+    paris = {"label": "Paris, France", "lat": 48.8566, "lng": 2.3522}
+
+    response = post_plan(client, trip(origin=london, destination=paris))
+
+    assert response.status_code == 200
+    assert response.json()["origin_time_zone"] == "Europe/London"
+    assert here_params(here)["origin"] == "51.50740,-0.12780"
+    assert here_params(here)["destination"] == "48.85660,2.35220"
 
 
 @pytest.mark.parametrize(
@@ -222,9 +234,9 @@ def test_validation_messages_say_what_to_fix(client, here):
 
 
 def test_several_invalid_fields_are_all_reported_at_once(client, here):
-    overseas = {**CHICAGO, "lat": 51.5, "lng": -0.12}
+    off_the_map = {**CHICAGO, "lat": 95.0}
     body = post_plan(
-        client, trip(origin=overseas, departure=minutes_from_now(-60), load_weight_lb=0)
+        client, trip(origin=off_the_map, departure=minutes_from_now(-60), load_weight_lb=0)
     ).json()
 
     assert set(body["details"]["fields"]) == {"origin", "departure", "load_weight_lb"}

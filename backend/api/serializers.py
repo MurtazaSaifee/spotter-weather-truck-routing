@@ -9,11 +9,6 @@ from .checkpoints import INTERVAL_CHOICES
 from .risk import AVERAGE_RISK_TOLERANCE, CONDITIONS, Criterion, Level
 from .routing import TripRequest
 
-# A box around the US, Canada and Mexico, as (south, north) and (west, east). It also takes in a
-# little ocean and the Caribbean; place search and routing do the finer filtering.
-NORTH_AMERICA_LAT = (14.0, 72.0)
-NORTH_AMERICA_LNG = (-170.0, -50.0)
-
 # A driver who took a moment to submit has a departure a few minutes in the past; the
 # default "next full hour" must never be rejected for that.
 DEPARTURE_GRACE = timedelta(minutes=15)
@@ -97,13 +92,6 @@ class TripPlaceSerializer(serializers.Serializer):
     lat = serializers.FloatField(min_value=-90, max_value=90)
     lng = serializers.FloatField(min_value=-180, max_value=180)
     time_zone = serializers.CharField(required=False, write_only=True)
-
-    def validate(self, attrs: dict) -> dict:
-        south, north = NORTH_AMERICA_LAT
-        west, east = NORTH_AMERICA_LNG
-        if not (south <= attrs["lat"] <= north and west <= attrs["lng"] <= east):
-            raise serializers.ValidationError("This place is outside North America.")
-        return attrs
 
 
 class PlanRequestSerializer(serializers.Serializer):

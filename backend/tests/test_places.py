@@ -37,12 +37,12 @@ def test_suggestions_come_from_here_with_label_coordinates_and_time_zone(client,
     ]
 
 
-def test_here_is_asked_for_eight_us_canada_and_mexico_places(client, here):
+def test_here_is_asked_for_eight_places_from_anywhere(client, here):
     client.get(SUGGEST_URL, {"q": "Chicago"})
 
     params = here.calls.last.request.url.params
     assert params["q"] == "Chicago"
-    assert params["in"] == "countryCode:USA,CAN,MEX"
+    assert "in" not in params
     assert params["limit"] == "8"
     assert params["apiKey"] == "test-here-key"
 
@@ -120,7 +120,7 @@ def test_photon_labels_read_like_an_address(client, outbound_http, photon):
     ]
 
 
-def test_photon_is_restricted_to_north_america_and_never_sees_the_here_key(
+def test_photon_is_asked_for_places_from_anywhere_and_never_sees_the_here_key(
     client, outbound_http, photon
 ):
     outbound_http.get(HERE_URL).respond(500)
@@ -130,28 +130,35 @@ def test_photon_is_restricted_to_north_america_and_never_sees_the_here_key(
     request = photon.calls.last.request
     assert request.url.params["q"] == "Chicago"
     assert request.url.params["limit"] == "8"
-    assert request.url.params["bbox"] == "-170,14,-50,72"
+    assert "bbox" not in request.url.params
     assert request.headers["User-Agent"].startswith("spotter-")
     assert "test-here-key" not in str(request.url)
 
 
-def test_photon_results_outside_the_us_canada_and_mexico_are_dropped(
-    client, outbound_http, photon, load_fixture
-):
+def test_photon_results_outside_north_america_are_kept(client, outbound_http, photon, load_fixture):
     payload = load_fixture("places/photon_chicago.json")
-    havana = {
+    paris = {
         "type": "Feature",
-        "properties": {"name": "Chicago", "country": "Cuba", "countrycode": "CU"},
-        "geometry": {"type": "Point", "coordinates": [-82.38, 23.13]},
+        "properties": {
+            "name": "Paris",
+            "country": "France",
+            "countrycode": "FR",
+            "state": "Ile-de-France",
+        },
+        "geometry": {"type": "Point", "coordinates": [2.35, 48.86]},
     }
-    payload["features"].insert(0, havana)
+    payload["features"].insert(0, paris)
     photon.respond(json=payload)
     outbound_http.get(HERE_URL).respond(500)
 
-    body = client.get(SUGGEST_URL, {"q": "Chicago"}).json()
+    body = client.get(SUGGEST_URL, {"q": "Paris"}).json()
 
-    assert all("Cuba" not in s["label"] for s in body["suggestions"])
-    assert body["suggestions"][0]["label"] == "Chicago, Illinois, United States"
+    assert body["suggestions"][0] == {
+        "label": "Paris, Ile-de-France, France",
+        "lat": 48.86,
+        "lng": 2.35,
+        "time_zone": "Europe/Paris",
+    }
     assert len(body["suggestions"]) == 8
 
 
@@ -207,6 +214,8 @@ def test_the_here_key_is_not_logged_when_here_fails_either(client, outbound_http
         (44.65, -63.58, "America/Halifax"),
         (61.22, -149.90, "America/Anchorage"),
         (21.31, -157.86, "Pacific/Honolulu"),
+        (51.51, -0.13, "Europe/London"),
+        (35.68, 139.69, "Asia/Tokyo"),
     ],
 )
 def test_time_zone_is_resolved_from_the_coordinates_without_another_api_call(

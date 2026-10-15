@@ -350,7 +350,7 @@ _TOO_FAR_AHEAD = f"Departure can't be more than {duration_text(DEPARTURE_HORIZON
 PLAN_400 = error_response(
     "`validation_error`: a field is missing or invalid, and `details.fields` names each one. "
     "Examples: a departure without a UTC offset or outside the window "
-    f"({departure_window_text()}), a place outside North America, the same origin "
+    f"({departure_window_text()}), a latitude or longitude out of range, the same origin "
     f"and destination, a load weight outside 1 to {MAX_LOAD_WEIGHT_LB:,} lb, or an interval "
     f"other than {_INTERVALS}.",
     _error_example(
@@ -426,9 +426,9 @@ HEATMAP_OK = OpenApiExample(
     status_codes=["200"],
 )
 HEATMAP_400 = error_response(
-    "`validation_error`: a geometry does not decode, has more than 5,000 vertices or leaves "
-    "North America; there are more than three geometries; or the departure or load weight is "
-    "outside the same limits as the plan's.",
+    "`validation_error`: a geometry does not decode, has more than 5,000 vertices or has a "
+    "latitude or longitude out of range; there are more than three geometries; or the "
+    "departure or load weight is outside the same limits as the plan's.",
     _error_example(
         "Bad geometry",
         "validation_error",
