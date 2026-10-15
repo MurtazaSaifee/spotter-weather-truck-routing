@@ -6,6 +6,7 @@ import { useMemo, useRef, useState } from 'react';
 import {
   AttributionControl,
   Map,
+  type MapEvent,
   type MapRef,
   NavigationControl,
   Popup,
@@ -55,6 +56,16 @@ const MAP_STYLE = 'https://tiles.openfreemap.org/styles/positron';
 
 // Continental US.
 const INITIAL_VIEW_STATE = { longitude: -98.5, latitude: 39.5, zoom: 3.6 };
+
+/**
+ * Keeps the map north-up. `dragRotate` and `touchPitch` are map props, but a twist of two fingers
+ * and Shift+arrow rotate through handlers that only have a method for it. Pinch zoom and arrow
+ * panning stay.
+ */
+function lockNorthUp({ target }: MapEvent) {
+  target.touchZoomRotate.disableRotation();
+  target.keyboard.disableRotation();
+}
 
 interface TripMapProps {
   origin: Place | null;
@@ -202,12 +213,17 @@ export default function TripMap({
       initialViewState={INITIAL_VIEW_STATE}
       style={{ width: '100%', height: '100%', ...insetStyle(padding) }}
       attributionControl={false}
+      // A truck route needs no rotation or tilt, and nobody finds the Ctrl/right-drag gesture:
+      // the map stays north-up, so it has no compass either.
+      dragRotate={false}
+      touchPitch={false}
+      onLoad={lockNorthUp}
     >
       <MapStyles />
       {/* Collapses to an info button on a narrow map; every credit stays one tap away. */}
       <AttributionControl position="bottom-right" customAttribution={WEATHER_ATTRIBUTION} />
       <CollapsedAttribution />
-      <NavigationControl position="top-right" />
+      <NavigationControl position="top-right" showCompass={false} />
       <PlacePins origin={origin} destination={destination} />
       <MapFraming origin={origin} destination={destination} routes={paths} insets={padding} />
       <HeatmapLayers heatmap={heatmap} underlay={heatmapLayers} />

@@ -10,7 +10,7 @@ const FIT_PADDING_RATIO = 0.12;
 // A pin stands 42 px above the point it marks, so the top needs at least that much room.
 const PIN_CLEARANCE_PX = 56;
 
-// MapLibre's controls (zoom, compass, attribution) sit in a column at the map's right edge,
+// MapLibre's controls (zoom, attribution) sit in a column at the map's right edge,
 // set in by this margin (its own CSS). The buttons are touch-sized (see MapStyles).
 const CONTROL_MARGIN_PX = 10;
 /** Width of the column of map controls along the right edge, which nothing should sit under. */
