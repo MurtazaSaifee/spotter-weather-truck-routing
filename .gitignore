@@ -27,14 +27,3 @@ frontend/.gitignore
 .DS_Store
 .idea/
 .vscode/
-
-# Local-only notes and research (never published)
-docs/
-
-# Agent planning files (local only)
-.scratch/
-CLAUDE.md
-GLOSSARY.md
-
-# Local Claude tooling
-.claude/

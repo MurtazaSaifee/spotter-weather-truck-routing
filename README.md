@@ -10,7 +10,7 @@ The server sleeps when idle, so the first request after a quiet period can take 
 
 ## What it does
 
-| The brief asks for | Where it is |
+| Requirement | Implementation |
 | --- | --- |
 | Origin, destination, departure time, load weight | Address search anywhere in the world (HERE, with Photon as a fallback). Date-time picker in the origin's time zone. Weight in pounds, 1 to 50,000. |
 | Three route options from a routing API | HERE Routing v8 in truck mode, with the truck's weight and traffic at departure. Near-duplicates are merged and detours fill the gaps. |
@@ -20,7 +20,7 @@ The server sleeps when idle, so the first request after a quiet period can take 
 | Routes, checkpoints, risk, ETAs and summaries on a map | All routes, risk-coloured checkpoints with ETA and conditions on hover or tap, per-route labels and cards. |
 | Heatmap with a 0 to 48 hour slider | A smooth risk field over a 25 mile corridor, with a wind, rain and snow toggle and a truck marker that follows the slider. |
 
-It also works on a phone: the panel becomes a draggable bottom sheet over a full-screen map.
+The layout is responsive: on a phone, the panel becomes a draggable bottom sheet over a full-screen map.
 
 ## Run it locally
 
@@ -98,7 +98,7 @@ The browser talks to one origin. Vercel serves the static app and rewrites `/api
 
 | Module | Responsibility |
 | --- | --- |
-| [`risk.py`](backend/api/risk.py) | The brief's rules and nothing else. Pure, no Django. Classifies a checkpoint and ranks routes. |
+| [`risk.py`](backend/api/risk.py) | The risk rules and nothing else. Pure, no Django. Classifies a checkpoint and ranks routes. |
 | [`planning.py`](backend/api/planning.py) | Orchestrates one plan: routes, interval, checkpoints, forecast, risk, ranking, notices. |
 | [`routing.py`](backend/api/routing.py) | HERE adapter. Truck routes with alternatives, near-duplicate removal, detour fallback, 15 minute cache. |
 | [`checkpoints.py`](backend/api/checkpoints.py) | Distance and elapsed-time profile of a route, checkpoint placement, ETAs, covered miles, automatic interval. |
@@ -157,9 +157,9 @@ Each visitor may make 60 plan, 60 heatmap and 300 suggestion requests per clock 
 - Behind Vercel and Cloud Run, the connection address is Google's front end for everyone. The visitor is read from `X-Forwarded-For`, counting `TRUSTED_PROXY_HOPS` entries from the end (default 2: Vercel's egress, then Cloud Run). Entries to the left are whatever the client claimed and are ignored. `X-Real-IP` is not trusted, because Vercel passes a client's own value through.
 - **Caveat:** someone who calls the Cloud Run URL directly skips Vercel and can choose their own bucket, because the headers cannot tell a forged `a, b` from Vercel's `client, egress`. Treat the limit as a quota guard, not a security boundary. A fix would need a secret shared with Vercel, or restricting Cloud Run ingress. If you deploy with a different number of proxies, set `TRUSTED_PROXY_HOPS` to match.
 
-## How the brief was interpreted
+## Design decisions and assumptions
 
-The brief leaves some things open and the risk table is ambiguous at its edges. Each decision below is made once, in code, and covered by a test. The numbers in the code are the ones in this section.
+The requirements leave some things open, and the risk table is ambiguous at its edges. Each decision below is implemented in one place and covered by a test, and the numbers in the code are the ones listed here.
 
 The thresholds:
 
@@ -171,10 +171,10 @@ The thresholds:
 
 **Risk at a checkpoint**
 
-1. **A value exactly on a band edge goes to the higher band.** The brief's ranges share their edges (0.25 in/hr rain is both Moderate and High). Erring toward caution is the only defensible reading for a safety tool. This includes the top band: the brief writes No Travel as rain "> 1.00" and snow "> 3.0", but here exactly 1.00 in/hr and 3.0 in/hr are No Travel. This is the one place where the code departs from the brief's literal text.
+1. **A value exactly on a band edge goes to the higher band.** The published ranges share their edges (0.25 in/hr rain is both Moderate and High). Erring toward caution is the only defensible reading for a safety tool. This includes the top band: the table writes No Travel as rain "> 1.00" and snow "> 3.0", but here exactly 1.00 in/hr and 3.0 in/hr are No Travel. This is the one place where the code departs from the literal text of the table.
 2. **The weight rules are strict.** "More than 30,000 lb" and "more than 40,000 lb" are read literally, so a load of exactly 30,000 or 40,000 lb is not escalated. The rules: wind ≥ 55 is No Travel for any load; 45 to 54 mph over 30,000 lb is No Travel; 35 to 44 mph over 40,000 lb is Severe. They only raise wind, and the stricter of table and load rule wins. The load rules read the cargo weight the driver enters, not the gross weight.
 3. **Worst-of, combined conditions and the score bonus.** A checkpoint's level is the worst of its wind (after the load rules), rain and snow levels. The condition or conditions at that level are shown as the driver of the risk, and a Low checkpoint has none. If two or more conditions are Moderate or worse, the checkpoint is flagged as combined ("wind + snow") and its score is the level (Low 0 to No Travel 4) plus 0.5. The bonus feeds only the average-risk comparison. It never changes the displayed level, because the published table should stay true.
-4. **Gust warnings are kept, and they are informational.** Gusts go through the same wind table and load rules. A warning shows only when the gust-implied level is High or worse and higher than the sustained wind's level. Warning on every breezy checkpoint would make the signal worthless. It never changes the level, the score or the ranking, because the brief's rules are about sustained wind.
+4. **Gust warnings are kept, and they are informational.** Gusts go through the same wind table and load rules. A warning shows only when the gust-implied level is High or worse and higher than the sustained wind's level. Warning on every breezy checkpoint would make the signal worthless. It never changes the level, the score or the ranking, because the rules are defined on sustained wind.
 5. **No data is never Low.** If sustained wind, rain or snow is still missing after trying the hour either side, the checkpoint is No data: grey, left out of risk miles and average risk, and counted as the route's unassessed miles, with a plan-level notice. Treating "unknown" as "safe" would give false reassurance. The one exception is a known No Travel: it is the top level, so a missing value cannot change it, and the checkpoint is No Travel (driven by the known conditions) and blocks the route as usual. Any lower known level stays No data, because the missing values could raise it. A missing gust alone only drops the gust warning. A route with nothing assessed is never preferred on average risk over one that has data.
 6. **Rain means rain plus showers.** Open-Meteo's `rain` is large-scale rain only; convective downpours are in `showers`. Wind is the sustained 10 m wind, and snow is inches of snow per hour.
 
@@ -182,9 +182,9 @@ The thresholds:
 
 7. **Forecast hour selection.** Open-Meteo stamps each hourly value at time T. Wind is an instant reading at T, so it is taken at the whole hour nearest the ETA. Gusts, rain, showers and snowfall are the maximum or total over the hour before T, so they come from the stamp at or just after the ETA: the hour that contains it. A missing value borrows the neighbouring hour, nearer one first. Forecasts are fetched for the current UTC day plus seven more (192 hours); anything outside that is No data.
 8. **Interval tiers.** The interval is chosen from the shortest of the three routes: under 300 miles gives 10, 300 to 1,000 miles inclusive gives 25, over 1,000 gives 50. Short trips get detail, long hauls are not buried in points. The driver can override it with 10, 25 or 50 miles, and all three routes always share one interval so their risk is compared fairly. Origin and destination are always checkpoints, and a final gap shorter than the interval is kept as it is.
-9. **ETAs follow the road.** HERE returns the route in about a thousand spans, each with a length and a traffic-aware duration. A checkpoint's ETA is the departure time plus the elapsed time at its distance, interpolated inside its span, so slow city stretches and predicted traffic delay later checkpoints. There are no driver rest stops (see the limitations).
+9. **ETAs follow the road.** HERE returns the route in about a thousand spans, each with a length and a traffic-aware duration. A checkpoint's ETA is the departure time plus the elapsed time at its distance, interpolated inside its span, so slow city stretches and predicted traffic delay later checkpoints. There are no driver rest stops (see [Trade-offs and limitations](#trade-offs-and-limitations)).
 10. **Centred covered miles.** A checkpoint stands for the road around it: half the gap to the previous checkpoint plus half the gap to the next. The first and last cover only their inner half, so a route's covered miles add up to its length. Risk miles and average risk use these weights, so a checkpoint in the middle of a long gap counts for more road than one in a short gap.
-11. **The 35,000 lb empty-truck assumption.** HERE needs the whole vehicle's weight, but the driver enters only the cargo. The code adds 35,000 lb for an empty tractor and 53 ft trailer (a typical Class 8 figure; the constant is `EMPTY_TRUCK_WEIGHT_LB`) and sends `vehicle[grossWeight]` in kilograms, `(35,000 + load) × 0.45359237`, rounded. A 42,000 lb load is sent as 34,927 kg. This affects routing only. Risk uses the cargo weight, as the brief's rules do.
+11. **The 35,000 lb empty-truck assumption.** HERE needs the whole vehicle's weight, but the driver enters only the cargo. The code adds 35,000 lb for an empty tractor and 53 ft trailer (a typical Class 8 figure; the constant is `EMPTY_TRUCK_WEIGHT_LB`) and sends `vehicle[grossWeight]` in kilograms, `(35,000 + load) × 0.45359237`, rounded. A 42,000 lb load is sent as 34,927 kg. This affects routing only. Risk uses the cargo weight, as the rules do.
 
 **Ranking and the recommendation**
 
@@ -196,7 +196,7 @@ The thresholds:
 
 15. **Three distinct routes.** HERE is asked for up to six alternatives, fastest first by traffic-aware duration. Two routes are near-duplicates when at least 90% of the shorter one's mile-spaced samples lie within 500 m of the other, and the duplicate is dropped. If fewer than three remain, up to four detours are requested through points 10% and 20% of the trip length to either side of the midpoint, at right angles to the direction of travel. A failed detour is skipped. If there are still fewer than three, the app says so. Routes are numbered fastest first, but ranking is separate: "Route 2" can be rank 1.
 16. **The 0.05° lattice and the heatmap resolution.** Every weather lookup, checkpoint or heatmap, snaps to one 0.05° grid (at most about 2.5 miles of displacement, finer than the 0.11° model behind the forecast), and nearby checkpoints, routes and trips share one cached forecast per point. This is what keeps the free weather quota alive. The heatmap covers the lattice points within 25 miles of any route, on the finest grid, a multiple of 0.05° and never finer than 0.1°, that holds at most 500 points, so one provider request covers it. Short trips get fine grids and cross-country trips coarse ones. The browser then interpolates between those points to draw a smooth field. Smoothing is done per risk band rather than on the 0 to 4 score, so it can never invent a band that is not there, such as a yellow Moderate fringe between Low and Severe. The heatmap uses the same classification and colours as checkpoints, with the driver's load weight.
-17. **No Hours-of-Service rests.** ETAs are pure driving time. Adding mandatory breaks would need duty-cycle rules the brief does not give, and would make ETAs depend on guesses about where the driver stops. Real arrival times will be later, and a long trip's later checkpoints would see a different forecast hour.
+17. **No Hours-of-Service rests.** ETAs are pure driving time. Adding mandatory breaks would need duty-cycle rules that are not specified, and would make ETAs depend on guesses about where the driver stops. Real arrival times will be later, and a long trip's later checkpoints would see a different forecast hour.
 18. **The departure window.** A departure may be from 15 minutes ago to 48 hours ahead. The upper bound keeps every hour needed inside the 192-hour forecast window: 48 hours of waiting, a coast-to-coast trip of about 100 hours, and the slider. The 15 minute grace is there so the default "next full hour" is not rejected because someone took a moment to submit. The heatmap takes a wider grace of 1 hour, because the browser sends it the plan's departure again, possibly after a rate-limit wait or a long-open page, and it must not refuse a departure the plan just accepted. The time is entered and shown in the origin's time zone, with the zone labelled, and a time you picked keeps its clock reading when you then choose an origin in another zone.
 
 ## Trade-offs and limitations
@@ -205,9 +205,9 @@ The thresholds:
 - **A shared outgoing IP.** Cloud Run does not give the backend a fixed address, and Open-Meteo counts quota per IP, so other tenants on the same address can use up the allowance. The mitigations above reduce the damage. A fixed egress IP or the paid Open-Meteo plan would remove it.
 - **Non-commercial weather terms.** Open-Meteo's free API is for non-commercial use. This app has no ads or subscriptions. Anything commercial would need a paid plan. The data is CC BY 4.0 and is credited on the map.
 - **The HERE time-aware SKU.** Passing a departure time may also be billed against HERE's separate time-aware routing allowance. That was not verified. Both allowances are well above this app's use, but it is a cost to check before wider use.
-- **No Hours of Service.** See interpretation 17.
+- **No Hours of Service.** See decision 17.
 - **US units.** The truck rules and thresholds are in US units: wind in mph, rain and snow in inches per hour, and load in pounds. The app shows distances in miles and does not convert the rules to metric.
-- **Only wind, rain and snow.** Ice, freezing rain, fog, visibility and temperature are not in the brief's table and are not assessed.
+- **Only wind, rain and snow.** Ice, freezing rain, fog, visibility and temperature are not part of the risk table and are not assessed.
 - **Cold starts and the cache.** Cloud Run scales to zero, so a ping every 10 minutes keeps it mostly warm, but an occasional first request takes a few seconds. The hosted Redis (a free-tier instance) answers in about 50 ms per command from Cloud Run, so every cache access on a request path is batched into one call.
 - **Fixed-hour rate-limit windows and the direct-URL bypass.** See [Rate limits](#rate-limits).
 - **Photon fallback.** Place search falls back to a free public service with no uptime promise, so fallback suggestions can be slow or less precise.

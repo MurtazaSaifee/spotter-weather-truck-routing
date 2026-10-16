@@ -1,4 +1,4 @@
-"""The brief's risk rules: the single home of the thresholds, the load rules and the scoring.
+"""The risk rules: the single home of the thresholds, the load rules and the scoring.
 
 Pure: no I/O and no Django. ``classify`` takes what the forecast says at one checkpoint and
 the load, and says how risky that is and why.
@@ -6,9 +6,9 @@ the load, and says how risky that is and why.
 Reading decisions (the README repeats them):
 
 - Every band is a half-open interval and a value exactly on an edge goes to the higher band.
-  The brief writes No Travel as "> 1.00" in/hr of rain and "> 3.0" in/hr of snow; under this
+  The risk table writes No Travel as "> 1.00" in/hr of rain and "> 3.0" in/hr of snow; under this
   rule exactly 1.00 and 3.0 are No Travel too.
-- The load rules compare weight strictly ("more than" 30,000 / 40,000 lb), as the brief does.
+- The load rules compare weight strictly ("more than" 30,000 / 40,000 lb), as the table does.
 - A condition that is Low did not drive anything: a Low checkpoint has no driving condition.
 """
 

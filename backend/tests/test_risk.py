@@ -2,7 +2,7 @@
 
 The module under test is pure, so these tests call it directly: the checkpoint's sustained wind,
 gust, rain and snow rates and the load go in, the classification comes out. The expected levels are
-read off the brief's tables (docs/assignment.md) with the one reading decision the spec makes:
+read off the risk tables, with the one reading decision the implementation makes:
 a value exactly on a band edge belongs to the higher band.
 """
 
@@ -52,7 +52,7 @@ RAIN_EDGES = [
     (0.499, HIGH),
     (0.50, SEVERE),
     (0.999, SEVERE),
-    # The brief writes "> 1.00"; on the edge the higher band wins, so exactly 1.00 is No Travel.
+    # The table writes "> 1.00"; on the edge the higher band wins, so exactly 1.00 is No Travel.
     (1.00, NO_TRAVEL),
     (1.001, NO_TRAVEL),
     (1.01, NO_TRAVEL),
@@ -69,7 +69,7 @@ SNOW_EDGES = [
     (1.9, HIGH),
     (2.0, SEVERE),
     (2.9, SEVERE),
-    # "> 3.0" in the brief; exactly 3.0 is No Travel by the higher-band rule.
+    # "> 3.0" in the table; exactly 3.0 is No Travel by the higher-band rule.
     (3.0, NO_TRAVEL),
     (3.01, NO_TRAVEL),
     (3.1, NO_TRAVEL),
