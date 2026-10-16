@@ -68,6 +68,10 @@ interface TripMapProps {
 // The gap between a dot and the popup that describes it.
 const POPUP_OFFSET_PX = 12;
 const POPUP_EDGE_PX = 8;
+// What MapLibre's popup adds around the content (its padding): placement has to plan for the
+// whole box, not just the content.
+const POPUP_PADDING_X_PX = 20;
+const POPUP_PADDING_Y_PX = 30;
 
 /** A checkpoint being described, and where its popup goes so that it stays on the map. */
 interface Described {
@@ -146,15 +150,20 @@ export default function TripMap({
     const map = mapRef.current;
     if (!map) return null;
     const { clientWidth: width, clientHeight: height } = map.getContainer();
-    const popupWidth = Math.min(POPUP_WIDTH_PX, width - 2 * POPUP_EDGE_PX);
+    const popupWidth = Math.min(POPUP_WIDTH_PX, width - 2 * POPUP_EDGE_PX - POPUP_PADDING_X_PX);
     const { x, y } = map.project(dot.position);
     const { anchor, maxHeight } = placePopup({
       point: [x, y],
-      size: [popupWidth, POPUP_HEIGHT_PX],
+      size: [popupWidth + POPUP_PADDING_X_PX, POPUP_HEIGHT_PX + POPUP_PADDING_Y_PX],
       area: { width, height, padding },
       offset: POPUP_OFFSET_PX,
     });
-    return { dot, anchor, maxHeight, width: popupWidth };
+    return {
+      dot,
+      anchor,
+      maxHeight: Math.max(0, maxHeight - POPUP_PADDING_Y_PX),
+      width: popupWidth,
+    };
   }
 
   function handleHover(info: PickingInfo) {
