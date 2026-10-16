@@ -76,4 +76,18 @@ describe('placing a checkpoint popup', () => {
     expect(maxHeight).toBeLessThan(SIZE[1]);
     expect(maxHeight).toBeLessThanOrEqual(260 - 2 * 8);
   });
+
+  it("keeps the popup within the screen's width even when the visible band is short", () => {
+    // A phone, with a bottom sheet covering the lower half: the dot sits near the right edge.
+    const phone: PopupArea = { width: 375, height: 812, padding: { top: 210, bottom: 410 } };
+
+    const { anchor } = placePopup({ point: [235, 285], size: SIZE, area: phone, offset: OFFSET });
+
+    // Beside the dot, the box would start 9 px past the screen's left edge. Centred above or below
+    // the dot, it spans x 119..351, inside the screen's 8..367.
+    const boxLeft = 235 - SIZE[0] / 2;
+    expect(['top', 'bottom']).toContain(anchor);
+    expect(boxLeft).toBeGreaterThanOrEqual(8);
+    expect(boxLeft + SIZE[0]).toBeLessThanOrEqual(367);
+  });
 });

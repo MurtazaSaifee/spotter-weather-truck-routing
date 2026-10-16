@@ -22,6 +22,9 @@ interface Placement {
 // Kept clear between the popup and the edge of the visible map.
 const MARGIN_PX = 8;
 
+// A popup cut off at the side hides its text, while a short one only scrolls: sideways loses more.
+const SIDEWAYS_WEIGHT = 4;
+
 // Where the popup's box lies relative to the dot, for each anchor: -1 is before the dot on that
 // axis (above or left of it), 0 centred on it, 1 after it.
 const ANCHORS: [PopupAnchor, { x: -1 | 0 | 1; y: -1 | 0 | 1 }][] = [
@@ -72,7 +75,7 @@ export function placePopup({
     const fitted = Math.min(height, Math.max(0, room));
     const sideways =
       Math.max(0, visible.left - boxLeft) + Math.max(0, boxLeft + width - visible.right);
-    return { anchor, maxHeight: fitted, loss: sideways + (height - fitted) };
+    return { anchor, maxHeight: fitted, loss: sideways * SIDEWAYS_WEIGHT + (height - fitted) };
   });
 
   const best = options.reduce((a, b) => (b.loss < a.loss ? b : a));
