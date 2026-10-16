@@ -11,8 +11,11 @@ export type SheetSnap = 'collapsed' | 'half' | 'full';
 
 const SNAPS: readonly SheetSnap[] = ['collapsed', 'half', 'full'];
 
-/** Height of the always-visible header (handle and summary), without the safe area. */
-export const SHEET_HEADER_HEIGHT = 72;
+/**
+ * Height of the always-visible header (handle, title and a subtitle of up to two lines), without
+ * the safe area.
+ */
+export const SHEET_HEADER_HEIGHT = 80;
 /** Map left showing above the sheet when it is fully open. */
 export const SHEET_TOP_GAP = 12;
 /** The half snap shows this share of the screen. */
